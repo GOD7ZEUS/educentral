@@ -61,7 +61,10 @@ adminsRouter.post("/", async (req, res) => {
   });
 });
 
-const updateAdminSchema = z.object({ isActive: z.boolean() });
+const updateAdminSchema = z.object({
+  isActive: z.boolean().optional(),
+  password: z.string().min(8).optional(),
+});
 
 adminsRouter.patch("/:id", async (req, res) => {
   const parsed = updateAdminSchema.safeParse(req.body);
@@ -70,9 +73,13 @@ adminsRouter.patch("/:id", async (req, res) => {
   const admin = await prisma.user.findFirst({ where: { id: req.params.id, role: "ADMIN" } });
   if (!admin) return res.status(404).json({ error: "Admin not found" });
 
+  const { isActive, password } = parsed.data;
   const updated = await prisma.user.update({
     where: { id: admin.id },
-    data: { isActive: parsed.data.isActive },
+    data: {
+      ...(isActive !== undefined ? { isActive } : {}),
+      ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
+    },
   });
   res.json({ id: updated.id, name: updated.name, email: updated.email, isActive: updated.isActive });
 });
@@ -119,9 +126,13 @@ superAdminsRouter.patch("/:id", async (req, res) => {
   const superAdmin = await prisma.user.findFirst({ where: { id: req.params.id, role: "SUPER_ADMIN" } });
   if (!superAdmin) return res.status(404).json({ error: "Super admin not found" });
 
+  const { isActive, password } = parsed.data;
   const updated = await prisma.user.update({
     where: { id: superAdmin.id },
-    data: { isActive: parsed.data.isActive },
+    data: {
+      ...(isActive !== undefined ? { isActive } : {}),
+      ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
+    },
   });
   res.json({ id: updated.id, name: updated.name, email: updated.email, isActive: updated.isActive });
 });

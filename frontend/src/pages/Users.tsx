@@ -93,6 +93,22 @@ export function Users() {
     loadUsers();
   }
 
+  async function resetPassword(u: UserRow) {
+    const newPassword = window.prompt(`New password for ${u.name} (min 8 characters):`);
+    if (!newPassword) return;
+    if (newPassword.length < 8) {
+      window.alert("Password must be at least 8 characters");
+      return;
+    }
+    const path = u.role === "SUPER_ADMIN" ? `/super-admins/${u.id}` : `/admins/${u.id}`;
+    try {
+      await api.patch(path, { password: newPassword });
+      window.alert(`Password reset for ${u.name}`);
+    } catch (err: any) {
+      window.alert(extractErrorMessage(err, "Could not reset password"));
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -186,9 +202,14 @@ export function Users() {
                 </td>
                 <td className="px-4 py-2 text-right">
                   {(u.role === "ADMIN" || (isMaster && u.role === "SUPER_ADMIN")) && (
-                    <button onClick={() => toggleActive(u)} className="text-xs text-slate-500 hover:underline">
-                      {u.isActive ? "Deactivate" : "Reactivate"}
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      <button onClick={() => resetPassword(u)} className="text-xs text-slate-500 hover:underline">
+                        Reset Password
+                      </button>
+                      <button onClick={() => toggleActive(u)} className="text-xs text-slate-500 hover:underline">
+                        {u.isActive ? "Deactivate" : "Reactivate"}
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
