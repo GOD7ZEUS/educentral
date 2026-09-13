@@ -1,8 +1,9 @@
-import { Fragment, type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
 import { toIsoDob } from "../utils/dob";
+import { ExportButton } from "../components/ExportButton";
 
 interface ClassRow {
   id: string;
@@ -93,20 +94,47 @@ export function Students() {
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const [classFilter, setClassFilter] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("");
+  const filterClass = classes.find((c) => c.id === classFilter);
+
   function loadStudents() {
-    api.get("/students").then((res) => setStudents(res.data));
+    api
+      .get("/students", { params: { classId: classFilter || undefined, sectionId: sectionFilter || undefined } })
+      .then((res) => setStudents(res.data));
   }
 
   useEffect(() => {
-    loadStudents();
     api.get("/classes").then((res) => setClasses(res.data));
     if (isTeacher) {
       api.get("/teachers/me").then((res) => setMyLedSectionIds(new Set(res.data.sectionIds)));
     }
   }, [isTeacher]);
 
+  useEffect(loadStudents, [classFilter, sectionFilter]);
+
   const selectedClass = classes.find((c) => c.id === form.classId);
   const editSelectedClass = classes.find((c) => c.id === editForm.classId);
+
+  const exportRows = useMemo(
+    () =>
+      students.map((s) => ({
+        "Admission No": s.admissionNo,
+        Name: s.user.name,
+        Email: s.user.email,
+        Class: s.class?.name ?? "",
+        Section: s.section?.name ?? "",
+        DOB: s.dob ? s.dob.slice(0, 10) : "",
+        Gender: s.gender ?? "",
+        "Blood Group": s.bloodGroup ?? "",
+        "Father's Name": s.fatherName ?? "",
+        "Father's Phone": s.fatherPhone ?? "",
+        "Mother's Name": s.motherName ?? "",
+        "Mother's Phone": s.motherPhone ?? "",
+        Transport: transportLabel(s.transportMode),
+      })),
+    [students]
+  );
 
   function canEdit(s: StudentRow) {
     if (isAdminOrPlatform) return true;
@@ -182,14 +210,30 @@ export function Students() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">Students</h1>
-        {canCreate && (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            {showForm ? "Cancel" : "Add Student"}
-          </button>
-        )}
+        <div className="flex gap-2">
+          <ExportButton filename="students" rows={exportRows} />
+          {canCreate && (
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              {showForm ? "Cancel" : "Add Student"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-3">
+        <select value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setSectionFilter(""); }}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <option value="">All Classes</option>
+          {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} disabled={!filterClass}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50">
+          <option value="">All Sections</option>
+          {filterClass?.sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
       </div>
 
       {showForm && (

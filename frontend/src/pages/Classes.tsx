@@ -1,6 +1,7 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { ExportButton } from "../components/ExportButton";
 
 interface TeacherRow {
   id: string;
@@ -39,6 +40,21 @@ export function Classes() {
   function load() {
     api.get("/classes").then((res) => setClasses(res.data));
   }
+
+  const exportRows = useMemo(
+    () =>
+      classes.flatMap((cls) =>
+        cls.sections.length > 0
+          ? cls.sections.map((s) => ({
+              Class: cls.name,
+              Section: s.name,
+              "Class Teacher": s.classTeacher?.user.name ?? "",
+              Students: cls._count.students,
+            }))
+          : [{ Class: cls.name, Section: "", "Class Teacher": "", Students: cls._count.students }]
+      ),
+    [classes]
+  );
 
   useEffect(() => {
     load();
@@ -118,7 +134,10 @@ export function Classes() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-800">Classes &amp; Sections</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-800">Classes &amp; Sections</h1>
+        <ExportButton filename="classes-sections" rows={exportRows} />
+      </div>
 
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 

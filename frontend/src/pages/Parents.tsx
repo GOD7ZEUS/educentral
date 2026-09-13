@@ -1,7 +1,8 @@
-import { Fragment, type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { toIsoDob } from "../utils/dob";
+import { ExportButton } from "../components/ExportButton";
 
 interface StudentRow {
   id: string;
@@ -38,6 +39,16 @@ export function Parents() {
   }, []);
 
   const unlinkedStudentIds = new Set(parents.flatMap((p) => p.students.map((s) => s.id)));
+
+  const exportRows = useMemo(
+    () =>
+      parents.map((p) => ({
+        Name: p.user.name,
+        Email: p.user.email,
+        Children: p.students.map((s) => `${s.admissionNo} — ${s.user.name}`).join(", "),
+      })),
+    [parents]
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -86,12 +97,15 @@ export function Parents() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">Parents / Guardians</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          {showForm ? "Cancel" : "Add Guardian"}
-        </button>
+        <div className="flex gap-2">
+          <ExportButton filename="parents" rows={exportRows} />
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            {showForm ? "Cancel" : "Add Guardian"}
+          </button>
+        </div>
       </div>
 
       {showForm && (

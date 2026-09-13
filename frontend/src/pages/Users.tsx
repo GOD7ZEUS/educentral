@@ -1,8 +1,9 @@
-import { Fragment, type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { useAuth } from "../context/AuthContext";
 import { toIsoDob } from "../utils/dob";
+import { ExportButton } from "../components/ExportButton";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -73,6 +74,18 @@ export function Users() {
   }, []);
 
   useEffect(loadUsers, [schoolFilter, roleFilter]);
+
+  const exportRows = useMemo(
+    () =>
+      users.map((u) => ({
+        Name: u.name,
+        Email: u.email,
+        Role: ROLE_LABELS[u.role] ?? u.role,
+        School: u.school?.name ?? "",
+        Status: u.isActive ? "Active" : "Deactivated",
+      })),
+    [users]
+  );
 
   async function handleNewSubmit(e: FormEvent) {
     e.preventDefault();
@@ -154,12 +167,15 @@ export function Users() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">Users</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          {showForm ? "Cancel" : "Add New"}
-        </button>
+        <div className="flex gap-2">
+          <ExportButton filename="users" rows={exportRows} />
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            {showForm ? "Cancel" : "Add New"}
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">

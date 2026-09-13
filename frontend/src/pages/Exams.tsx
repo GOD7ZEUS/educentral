@@ -1,7 +1,8 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
+import { ExportButton } from "../components/ExportButton";
 
 interface ClassRow {
   id: string;
@@ -35,7 +36,7 @@ interface ResultRow {
   maxMarks: number;
   grade: string | null;
   student: { admissionNo: string; user: { name: string } };
-  subject: { name: string };
+  subject: { id: string; name: string };
 }
 
 export function Exams() {
@@ -56,6 +57,7 @@ export function Exams() {
   const [editingExam, setEditingExam] = useState(false);
   const [examEditForm, setExamEditForm] = useState({ name: "", term: "", startDate: "", endDate: "" });
   const [confirmDeleteExam, setConfirmDeleteExam] = useState(false);
+  const [subjectFilter, setSubjectFilter] = useState("");
 
   function loadExams() {
     api.get("/exams").then((res) => setExams(res.data));
@@ -76,6 +78,24 @@ export function Exams() {
     }
     api.get("/exams/" + selectedExamId + "/results").then((res) => setResults(res.data));
   }, [selectedExamId]);
+
+  const filteredResults = useMemo(
+    () => (subjectFilter ? results.filter((r) => r.subject.id === subjectFilter) : results),
+    [results, subjectFilter]
+  );
+
+  const exportRows = useMemo(
+    () =>
+      filteredResults.map((r) => ({
+        "Admission No": r.student.admissionNo,
+        Student: r.student.user.name,
+        Subject: r.subject.name,
+        "Marks Obtained": r.marksObtained,
+        "Max Marks": r.maxMarks,
+        Grade: r.grade ?? "",
+      })),
+    [filteredResults]
+  );
 
   useEffect(() => {
     if (!selectedExam) {
@@ -269,28 +289,38 @@ export function Exams() {
             </form>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-2">Student</th>
-                  <th className="px-4 py-2">Subject</th>
-                  <th className="px-4 py-2">Marks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {results.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-4 py-2">{r.student.admissionNo} — {r.student.user.name}</td>
-                    <td className="px-4 py-2">{r.subject.name}</td>
-                    <td className="px-4 py-2">{r.marksObtained} / {r.maxMarks}</td>
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All Subjects</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <ExportButton filename={`exam-results-${selectedExam?.name ?? ""}`} rows={exportRows} />
+            </div>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-2">Student</th>
+                    <th className="px-4 py-2">Subject</th>
+                    <th className="px-4 py-2">Marks</th>
                   </tr>
-                ))}
-                {results.length === 0 && (
-                  <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">No results yet</td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredResults.map((r) => (
+                    <tr key={r.id}>
+                      <td className="px-4 py-2">{r.student.admissionNo} — {r.student.user.name}</td>
+                      <td className="px-4 py-2">{r.subject.name}</td>
+                      <td className="px-4 py-2">{r.marksObtained} / {r.maxMarks}</td>
+                    </tr>
+                  ))}
+                  {filteredResults.length === 0 && (
+                    <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">No results found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

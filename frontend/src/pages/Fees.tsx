@@ -1,6 +1,7 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { ExportButton } from "../components/ExportButton";
 
 interface ClassRow {
   id: string;
@@ -27,8 +28,10 @@ interface PaymentRow {
   status: string;
   paymentDate: string;
   student: { user: { name: string }; admissionNo: string };
-  feeStructure: { term: string; class: { name: string } };
+  feeStructure: { term: string; class: { id: string; name: string } };
 }
+
+const PAYMENT_STATUSES = ["PENDING", "PARTIAL", "PAID"];
 
 export function Fees() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
@@ -43,6 +46,33 @@ export function Fees() {
   const [editingStructureId, setEditingStructureId] = useState<string | null>(null);
   const [structureEditForm, setStructureEditForm] = useState({ term: "", amount: "", dueDate: "" });
   const [confirmDeleteStructureId, setConfirmDeleteStructureId] = useState<string | null>(null);
+
+  const [classFilter, setClassFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const filteredPayments = useMemo(
+    () =>
+      payments.filter(
+        (p) =>
+          (!classFilter || p.feeStructure.class.id === classFilter) &&
+          (!statusFilter || p.status === statusFilter)
+      ),
+    [payments, classFilter, statusFilter]
+  );
+
+  const exportRows = useMemo(
+    () =>
+      filteredPayments.map((p) => ({
+        "Admission No": p.student.admissionNo,
+        Student: p.student.user.name,
+        Class: p.feeStructure.class.name,
+        Term: p.feeStructure.term,
+        "Amount Paid": p.amountPaid,
+        Status: p.status,
+        Date: new Date(p.paymentDate).toLocaleDateString(),
+      })),
+    [filteredPayments]
+  );
 
   function loadPayments() {
     api.get("/fees/payments").then((res) => setPayments(res.data));
@@ -212,6 +242,22 @@ export function Fees() {
         </div>
       </div>
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
+          <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <option value="">All Classes</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <option value="">All Statuses</option>
+            {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <ExportButton filename="fee-payments" rows={exportRows} />
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
@@ -224,7 +270,7 @@ export function Fees() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {payments.map((p) => (
+            {filteredPayments.map((p) => (
               <tr key={p.id}>
                 <td className="px-4 py-2">{p.student.admissionNo} — {p.student.user.name}</td>
                 <td className="px-4 py-2">{p.feeStructure.class.name} — {p.feeStructure.term}</td>
@@ -233,8 +279,8 @@ export function Fees() {
                 <td className="px-4 py-2">{new Date(p.paymentDate).toLocaleDateString()}</td>
               </tr>
             ))}
-            {payments.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-400">No payments recorded yet</td></tr>
+            {filteredPayments.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-400">No payments found</td></tr>
             )}
           </tbody>
         </table>

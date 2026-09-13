@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { ExportButton } from "../components/ExportButton";
 
 interface ClassRow {
   id: string;
@@ -13,6 +14,11 @@ interface StudentRow {
   user: { name: string };
 }
 
+interface AttendanceRecord {
+  studentId: string;
+  status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
+}
+
 export function Attendance() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [classId, setClassId] = useState("");
@@ -22,6 +28,7 @@ export function Attendance() {
   const [present, setPresent] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   useEffect(() => {
     api.get("/classes").then((res) => setClasses(res.data));
@@ -29,21 +36,33 @@ export function Attendance() {
 
   const selectedClass = classes.find((c) => c.id === classId);
 
+  // Re-fetch the roster AND any attendance already recorded for this exact
+  // date/class/section — so navigating to a past date shows who was marked
+  // absent that day, not just right after submitting.
   useEffect(() => {
-    if (!classId) {
+    if (!classId || !date) {
       setStudents([]);
-      return;
-    }
-    api.get("/students", { params: { classId, sectionId: sectionId || undefined } }).then((res) => {
-      setStudents(res.data);
       setPresent(new Set());
       setSubmitted(false);
+      return;
+    }
+    setLoadingExisting(true);
+    Promise.all([
+      api.get("/students", { params: { classId, sectionId: sectionId || undefined } }),
+      api.get("/attendance", { params: { classId, sectionId: sectionId || undefined, date: new Date(date).toISOString() } }),
+    ]).then(([studentsRes, attendanceRes]) => {
+      setStudents(studentsRes.data);
+      const records: AttendanceRecord[] = attendanceRes.data;
+      if (records.length > 0) {
+        setPresent(new Set(records.filter((r) => r.status === "PRESENT").map((r) => r.studentId)));
+        setSubmitted(true);
+      } else {
+        setPresent(new Set());
+        setSubmitted(false);
+      }
+      setLoadingExisting(false);
     });
-  }, [classId, sectionId]);
-
-  useEffect(() => {
-    setSubmitted(false);
-  }, [date]);
+  }, [classId, sectionId, date]);
 
   function toggle(studentId: string) {
     if (submitted) return;
@@ -61,6 +80,20 @@ export function Attendance() {
   const roster = useMemo(
     () => students.map((s, idx) => ({ ...s, roll: idx + 1 })),
     [students]
+  );
+
+  const exportRows = useMemo(
+    () =>
+      roster.map((s) => ({
+        Roll: s.roll,
+        "Admission No": s.admissionNo,
+        Name: s.user.name,
+        Status: present.has(s.id) ? "Present" : "Absent",
+        Date: date,
+        Class: selectedClass?.name ?? "",
+        Section: selectedClass?.sections.find((sec) => sec.id === sectionId)?.name ?? "All",
+      })),
+    [roster, present, date, selectedClass, sectionId]
   );
 
   async function submit() {
@@ -81,7 +114,10 @@ export function Attendance() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-800">Attendance</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-800">Attendance</h1>
+        <ExportButton filename={`attendance-${date}`} rows={exportRows} />
+      </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <select value={classId} onChange={(e) => { setClassId(e.target.value); setSectionId(""); }}
@@ -98,7 +134,9 @@ export function Attendance() {
           className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
       </div>
 
-      {roster.length > 0 && (
+      {loadingExisting && <p className="text-sm text-slate-400">Loading…</p>}
+
+      {!loadingExisting && roster.length > 0 && (
         <>
           <div className="mb-4 flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-center">
@@ -118,7 +156,9 @@ export function Attendance() {
             <div className="ml-auto flex items-center gap-3">
               {submitted ? (
                 <>
-                  <span className="text-sm font-medium text-green-600">Attendance submitted</span>
+                  <span className="text-sm font-medium text-green-600">
+                    Attendance recorded for {new Date(date).toLocaleDateString()}
+                  </span>
                   <button
                     onClick={() => setSubmitted(false)}
                     className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
@@ -139,31 +179,29 @@ export function Attendance() {
           </div>
 
           {!submitted ? (
-            <>
-              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-                {roster.map((s) => {
-                  const isPresent = present.has(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => toggle(s.id)}
-                      className={`flex flex-col items-center rounded-xl border-2 p-3 transition ${
-                        isPresent
-                          ? "border-green-500 bg-green-50"
-                          : "border-slate-200 bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      <span className={`text-xl font-bold ${isPresent ? "text-green-600" : "text-slate-700"}`}>
-                        {s.roll}
-                      </span>
-                      <span className="mt-1 line-clamp-1 text-center text-[11px] text-slate-500">
-                        {s.user.name.split(" ")[0]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+              {roster.map((s) => {
+                const isPresent = present.has(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => toggle(s.id)}
+                    className={`flex flex-col items-center rounded-xl border-2 p-3 transition ${
+                      isPresent
+                        ? "border-green-500 bg-green-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <span className={`text-xl font-bold ${isPresent ? "text-green-600" : "text-slate-700"}`}>
+                      {s.roll}
+                    </span>
+                    <span className="mt-1 line-clamp-1 text-center text-[11px] text-slate-500">
+                      {s.user.name.split(" ")[0]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-green-200 bg-green-50 p-4">
@@ -189,7 +227,7 @@ export function Attendance() {
         </>
       )}
 
-      {classId && roster.length === 0 && (
+      {!loadingExisting && classId && roster.length === 0 && (
         <p className="text-sm text-slate-400">No students found for this selection.</p>
       )}
     </div>

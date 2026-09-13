@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
+import { ExportButton } from "../components/ExportButton";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -26,7 +27,7 @@ interface EntryRow {
   startTime: string;
   endTime: string;
   subject: { name: string };
-  teacher: { user: { name: string } };
+  teacher: { id: string; user: { name: string } };
   class: { name: string };
   section: { name: string };
 }
@@ -50,6 +51,7 @@ export function Timetable() {
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
+  const [teacherFilter, setTeacherFilter] = useState("");
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [myEntries, setMyEntries] = useState<EntryRow[]>([]);
 
@@ -136,11 +138,25 @@ export function Timetable() {
     );
   }
 
-  const grouped = groupByDay(entries);
+  const filteredEntries = teacherFilter ? entries.filter((e) => e.teacher.id === teacherFilter) : entries;
+  const grouped = groupByDay(filteredEntries);
+
+  const exportRows = filteredEntries.map((e) => ({
+    Day: DAY_NAMES[e.dayOfWeek],
+    "Start Time": e.startTime,
+    "End Time": e.endTime,
+    Class: e.class.name,
+    Section: e.section.name,
+    Subject: e.subject.name,
+    Teacher: e.teacher.user.name,
+  }));
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-800">Routine / Timetable</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-800">Routine / Timetable</h1>
+        <ExportButton filename="timetable" rows={exportRows} />
+      </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <select value={classId} onChange={(e) => { setClassId(e.target.value); setSectionId(""); }}
@@ -152,6 +168,11 @@ export function Timetable() {
           className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50">
           <option value="">Select section</option>
           {selectedClass?.sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <option value="">All Teachers</option>
+          {teachers.map((t) => <option key={t.id} value={t.id}>{t.user.name}</option>)}
         </select>
       </div>
 

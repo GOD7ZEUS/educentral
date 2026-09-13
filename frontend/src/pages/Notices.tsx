@@ -1,6 +1,7 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
+import { ExportButton } from "../components/ExportButton";
 
 interface NoticeRow {
   id: string;
@@ -23,12 +24,39 @@ export function Notices() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const canPost = !!user && (user.role === "ADMIN" || user.role === "TEACHER" || PLATFORM_ROLES.includes(user.role));
   const isAdminOrPlatform = !!user && (user.role === "ADMIN" || PLATFORM_ROLES.includes(user.role));
+  const [audienceFilter, setAudienceFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   function load() {
     api.get("/notices").then((res) => setNotices(res.data));
   }
 
   useEffect(load, []);
+
+  const filteredNotices = useMemo(
+    () =>
+      notices.filter((n) => {
+        if (audienceFilter && n.audience !== audienceFilter) return false;
+        const posted = n.createdAt.slice(0, 10);
+        if (dateFrom && posted < dateFrom) return false;
+        if (dateTo && posted > dateTo) return false;
+        return true;
+      }),
+    [notices, audienceFilter, dateFrom, dateTo]
+  );
+
+  const exportRows = useMemo(
+    () =>
+      filteredNotices.map((n) => ({
+        Title: n.title,
+        Content: n.content,
+        Audience: n.audience ? `${n.audience}s only` : "Everyone",
+        "Posted By": n.postedBy.name,
+        Date: new Date(n.createdAt).toLocaleDateString(),
+      })),
+    [filteredNotices]
+  );
 
   function canEdit(n: NoticeRow) {
     return isAdminOrPlatform || n.postedById === user?.id;
@@ -68,7 +96,22 @@ export function Notices() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-800">Notices</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-800">Notices</h1>
+        <ExportButton filename="notices" rows={exportRows} />
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-3">
+        <select value={audienceFilter} onChange={(e) => setAudienceFilter(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <option value="">All Audiences</option>
+          {AUDIENCES.map((a) => <option key={a} value={a}>{a}s only</option>)}
+        </select>
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm" title="From date" />
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm" title="To date" />
+      </div>
 
       {canPost && (
         <form onSubmit={handleSubmit} className="mb-6 grid gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -92,7 +135,7 @@ export function Notices() {
       )}
 
       <div className="space-y-3">
-        {notices.map((n) => (
+        {filteredNotices.map((n) => (
           <div key={n.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             {editingId === n.id ? (
               <div className="grid gap-2">
@@ -147,7 +190,7 @@ export function Notices() {
             )}
           </div>
         ))}
-        {notices.length === 0 && <p className="text-sm text-slate-400">No notices yet.</p>}
+        {filteredNotices.length === 0 && <p className="text-sm text-slate-400">No notices found.</p>}
       </div>
     </div>
   );

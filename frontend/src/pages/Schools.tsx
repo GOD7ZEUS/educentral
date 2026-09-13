@@ -1,8 +1,9 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { useSchoolContext } from "../context/SchoolContext";
+import { ExportButton } from "../components/ExportButton";
 
 interface SchoolRow {
   id: string;
@@ -36,6 +37,19 @@ export function Schools() {
   }
 
   useEffect(load, []);
+
+  const exportRows = useMemo(
+    () =>
+      schools.map((s) => ({
+        Name: s.name,
+        Code: s.code,
+        Website: s.websiteUrl ?? "",
+        Students: s._count.students,
+        Teachers: s._count.teachers,
+        Status: s.isActive ? "Active" : "Deactivated",
+      })),
+    [schools]
+  );
 
   function resetForm() {
     setForm(emptyTextForm);
@@ -116,12 +130,15 @@ export function Schools() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">Schools</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          {showForm ? "Cancel" : "Add School"}
-        </button>
+        <div className="flex gap-2">
+          <ExportButton filename="schools" rows={exportRows} />
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            {showForm ? "Cancel" : "Add School"}
+          </button>
+        </div>
       </div>
 
       {showForm && (

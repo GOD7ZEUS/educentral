@@ -1,8 +1,9 @@
-import { Fragment, type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
 import { toIsoDob } from "../utils/dob";
+import { ExportButton } from "../components/ExportButton";
 
 interface SubjectRow {
   id: string;
@@ -39,6 +40,7 @@ export function Teachers() {
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [subjectFilter, setSubjectFilter] = useState("");
 
   function loadTeachers() {
     api.get("/teachers").then((res) => setTeachers(res.data));
@@ -48,6 +50,23 @@ export function Teachers() {
     loadTeachers();
     api.get("/subjects").then((res) => setSubjects(res.data));
   }, []);
+
+  const filteredTeachers = useMemo(
+    () => (subjectFilter ? teachers.filter((t) => t.subjects.some((s) => s.id === subjectFilter)) : teachers),
+    [teachers, subjectFilter]
+  );
+
+  const exportRows = useMemo(
+    () =>
+      filteredTeachers.map((t) => ({
+        "Employee ID": t.employeeId,
+        Name: t.user.name,
+        Email: t.user.email,
+        Subjects: t.subjects.map((s) => s.name).join(", "),
+        "Class Teacher Of": t.classesLed.map((s) => `${s.class.name} - ${s.name}`).join(", "),
+      })),
+    [filteredTeachers]
+  );
 
   function toggleSubjectIds(ids: string[], id: string) {
     return ids.includes(id) ? ids.filter((s) => s !== id) : [...ids, id];
@@ -112,14 +131,25 @@ export function Teachers() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">Teachers</h1>
-        {isAdminOrPlatform && (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            {showForm ? "Cancel" : "Add Teacher"}
-          </button>
-        )}
+        <div className="flex gap-2">
+          <ExportButton filename="teachers" rows={exportRows} />
+          {isAdminOrPlatform && (
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              {showForm ? "Cancel" : "Add Teacher"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-3">
+        <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <option value="">All Subjects</option>
+          {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
       </div>
 
       {showForm && (
@@ -186,7 +216,7 @@ export function Teachers() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {teachers.map((t) => (
+            {filteredTeachers.map((t) => (
               <Fragment key={t.id}>
                 <tr>
                   <td className="px-4 py-2">{t.employeeId}</td>
@@ -262,8 +292,8 @@ export function Teachers() {
                 )}
               </Fragment>
             ))}
-            {teachers.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">No teachers yet</td></tr>
+            {filteredTeachers.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">No teachers found</td></tr>
             )}
           </tbody>
         </table>
