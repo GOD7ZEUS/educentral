@@ -77,12 +77,14 @@ const updateTeacherSchema = z.object({
   email: z.string().email().optional(),
   employeeId: z.string().min(1).optional(),
   subjectIds: z.array(z.string()).optional(),
+  isActive: z.boolean().optional(),
+  password: z.string().min(8).optional(),
 });
 
 teachersRouter.patch("/:id", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => {
   const parsed = updateTeacherSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { subjectIds, name, email, ...rest } = parsed.data;
+  const { subjectIds, name, email, isActive, password, ...rest } = parsed.data;
 
   const existing = await prisma.teacher.findFirst({
     where: { id: req.params.id, schoolId: resolveSchoolId(req) },
@@ -96,8 +98,16 @@ teachersRouter.patch("/:id", requireRole(...ADMIN_OR_PLATFORM), async (req, res)
   }
 
   const teacher = await prisma.$transaction(async (tx) => {
-    if (name || email) {
-      await tx.user.update({ where: { id: existing.userId }, data: { name, email } });
+    if (name || email || isActive !== undefined || password) {
+      await tx.user.update({
+        where: { id: existing.userId },
+        data: {
+          ...(name ? { name } : {}),
+          ...(email ? { email } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+          ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
+        },
+      });
     }
     return tx.teacher.update({
       where: { id: req.params.id },

@@ -62,6 +62,8 @@ adminsRouter.post("/", async (req, res) => {
 });
 
 const updateAdminSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
   isActive: z.boolean().optional(),
   password: z.string().min(8).optional(),
 });
@@ -73,10 +75,18 @@ adminsRouter.patch("/:id", async (req, res) => {
   const admin = await prisma.user.findFirst({ where: { id: req.params.id, role: "ADMIN" } });
   if (!admin) return res.status(404).json({ error: "Admin not found" });
 
-  const { isActive, password } = parsed.data;
+  const { name, email, isActive, password } = parsed.data;
+
+  if (email && email !== admin.email) {
+    const emailTaken = await prisma.user.findUnique({ where: { email } });
+    if (emailTaken) return res.status(409).json({ error: "Email already registered" });
+  }
+
   const updated = await prisma.user.update({
     where: { id: admin.id },
     data: {
+      ...(name ? { name } : {}),
+      ...(email ? { email } : {}),
       ...(isActive !== undefined ? { isActive } : {}),
       ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
     },

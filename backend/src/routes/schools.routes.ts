@@ -87,6 +87,9 @@ schoolsRouter.patch("/:id/admins/:adminId", async (req, res) => {
   res.json({ id: updated.id, name: updated.name, email: updated.email, isActive: updated.isActive });
 });
 
+// Creating a school only creates the school itself — no admin account. Once
+// it exists, a SUPER_ADMIN/MASTER_ADMIN creates an Admin from the Users page
+// and assigns it to this school (school first, then user, never bundled).
 const createSchoolSchema = z.object({
   name: z.string().min(1),
   code: z
@@ -95,44 +98,19 @@ const createSchoolSchema = z.object({
     .max(20)
     .regex(/^[A-Za-z0-9_-]+$/, "Code may only contain letters, numbers, - and _"),
   websiteUrl: z.string().url().optional().or(z.literal("")),
-  adminName: z.string().min(1),
-  adminEmail: z.string().email(),
-  adminPassword: z.string().min(8),
 });
 
 schoolsRouter.post("/", logoUpload.single("logo"), async (req, res) => {
   const parsed = createSchoolSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { name, code, websiteUrl, adminName, adminEmail, adminPassword } = parsed.data;
+  const { name, code, websiteUrl } = parsed.data;
   const logoUrl = req.file ? fileToDataUri(req.file) : null;
 
   const existingCode = await prisma.school.findUnique({ where: { code } });
   if (existingCode) return res.status(409).json({ error: "School code already in use" });
 
-  const existingEmail = await prisma.user.findUnique({ where: { email: adminEmail } });
-  if (existingEmail) return res.status(409).json({ error: "Admin email already registered" });
-
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
-
-  const school = await prisma.$transaction(async (tx) => {
-    const created = await tx.school.create({
-      data: {
-        name,
-        code,
-        logoUrl,
-        websiteUrl: websiteUrl || null,
-      },
-    });
-    await tx.user.create({
-      data: {
-        name: adminName,
-        email: adminEmail,
-        passwordHash,
-        role: "ADMIN",
-        schoolId: created.id,
-      },
-    });
-    return created;
+  const school = await prisma.school.create({
+    data: { name, code, logoUrl, websiteUrl: websiteUrl || null },
   });
 
   res.status(201).json(school);
@@ -158,4 +136,22 @@ schoolsRouter.patch("/:id", logoUpload.single("logo"), async (req, res) => {
     },
   });
   res.json(school);
+});
+
+schoolsRouter.delete("/:id", async (req, res) => {
+  const school = await prisma.school.findUnique({
+    where: { id: req.params.id },
+    include: { _count: { select: { students: true, teachers: true, users: true, classes: true } } },
+  });
+  if (!school) return res.status(404).json({ error: "School not found" });
+
+  const { students, teachers, users, classes } = school._count;
+  if (students + teachers + users + classes > 0) {
+    return res.status(409).json({
+      error: "Remove this school's users, classes and students before deleting it",
+    });
+  }
+
+  await prisma.school.delete({ where: { id: school.id } });
+  res.status(204).send();
 });

@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { useAuth } from "../context/AuthContext";
@@ -87,25 +87,45 @@ export function Users() {
     }
   }
 
-  async function toggleActive(u: UserRow) {
-    const path = u.role === "SUPER_ADMIN" ? `/super-admins/${u.id}` : `/admins/${u.id}`;
-    await api.patch(path, { isActive: !u.isActive });
-    loadUsers();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", email: "", isActive: true, password: "" });
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function canEdit(u: UserRow) {
+    return u.role === "ADMIN" || u.role === "TEACHER" || (isMaster && u.role === "SUPER_ADMIN");
   }
 
-  async function resetPassword(u: UserRow) {
-    const newPassword = window.prompt(`New password for ${u.name} (min 8 characters):`);
-    if (!newPassword) return;
-    if (newPassword.length < 8) {
-      window.alert("Password must be at least 8 characters");
-      return;
+  function startEdit(u: UserRow) {
+    setEditingId(u.id);
+    setEditDraft({ name: u.name, email: u.email, isActive: u.isActive, password: "" });
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(u: UserRow) {
+    setEditError(null);
+    const allowNameEmail = u.role !== "SUPER_ADMIN";
+    const payload: Record<string, unknown> = { isActive: editDraft.isActive };
+    if (allowNameEmail) {
+      payload.name = editDraft.name;
+      payload.email = editDraft.email;
     }
-    const path = u.role === "SUPER_ADMIN" ? `/super-admins/${u.id}` : `/admins/${u.id}`;
+    if (editDraft.password) {
+      if (editDraft.password.length < 8) {
+        setEditError("Password must be at least 8 characters");
+        return;
+      }
+      payload.password = editDraft.password;
+    }
     try {
-      await api.patch(path, { password: newPassword });
-      window.alert(`Password reset for ${u.name}`);
+      await api.patch(`/users/${u.id}`, payload);
+      setEditingId(null);
+      loadUsers();
     } catch (err: any) {
-      window.alert(extractErrorMessage(err, "Could not reset password"));
+      setEditError(extractErrorMessage(err, "Could not save changes"));
     }
   }
 
@@ -190,29 +210,67 @@ export function Users() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {users.map((u) => (
-              <tr key={u.id}>
-                <td className="px-4 py-2">{u.name}</td>
-                <td className="px-4 py-2 text-slate-500">{u.email}</td>
-                <td className="px-4 py-2">{ROLE_LABELS[u.role] ?? u.role}</td>
-                <td className="px-4 py-2">{u.school?.name ?? "—"}</td>
-                <td className="px-4 py-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                    {u.isActive ? "Active" : "Deactivated"}
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {(u.role === "ADMIN" || (isMaster && u.role === "SUPER_ADMIN")) && (
-                    <div className="flex justify-end gap-3">
-                      <button onClick={() => resetPassword(u)} className="text-xs text-slate-500 hover:underline">
-                        Reset Password
+              <Fragment key={u.id}>
+                <tr>
+                  <td className="px-4 py-2">{u.name}</td>
+                  <td className="px-4 py-2 text-slate-500">{u.email}</td>
+                  <td className="px-4 py-2">{ROLE_LABELS[u.role] ?? u.role}</td>
+                  <td className="px-4 py-2">{u.school?.name ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                      {u.isActive ? "Active" : "Deactivated"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {canEdit(u) && (
+                      <button
+                        onClick={() => (editingId === u.id ? cancelEdit() : startEdit(u))}
+                        className="text-xs text-slate-500 hover:underline"
+                      >
+                        {editingId === u.id ? "Cancel" : u.role === "SUPER_ADMIN" ? "Reset" : "Edit"}
                       </button>
-                      <button onClick={() => toggleActive(u)} className="text-xs text-slate-500 hover:underline">
-                        {u.isActive ? "Deactivate" : "Reactivate"}
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
+                    )}
+                  </td>
+                </tr>
+                {editingId === u.id && (
+                  <tr key={`${u.id}-edit`} className="bg-slate-50">
+                    <td colSpan={6} className="px-4 py-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {editError && <p className="sm:col-span-2 text-sm text-red-600">{editError}</p>}
+                        {u.role !== "SUPER_ADMIN" && (
+                          <>
+                            <input placeholder="Full name" value={editDraft.name}
+                              onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                            <input type="email" placeholder="Email" value={editDraft.email}
+                              onChange={(e) => setEditDraft({ ...editDraft, email: e.target.value })}
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                          </>
+                        )}
+                        <input type="password" placeholder="New password (leave blank to keep current)"
+                          value={editDraft.password}
+                          onChange={(e) => setEditDraft({ ...editDraft, password: e.target.value })}
+                          className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                        <label className="flex items-center gap-2 text-sm text-slate-600">
+                          <input type="checkbox" checked={editDraft.isActive}
+                            onChange={(e) => setEditDraft({ ...editDraft, isActive: e.target.checked })} />
+                          Active
+                        </label>
+                        <div className="sm:col-span-2 flex gap-2">
+                          <button onClick={() => saveEdit(u)}
+                            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                            Save
+                          </button>
+                          <button onClick={cancelEdit}
+                            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
             {users.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">No users found</td></tr>
