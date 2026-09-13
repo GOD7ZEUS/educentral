@@ -77,11 +77,6 @@ export function Dashboard() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Welcome, {user?.name}</h1>
-          <p className="text-sm text-slate-500">
-            {summary?.platform
-              ? "Here's how the platform is doing across all schools."
-              : `Here's what's happening ${isPlatformUser ? `at ${activeSchool?.name}` : "at your school"} today.`}
-          </p>
         </div>
 
         {isPlatformUser && (
