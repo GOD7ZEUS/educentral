@@ -1,4 +1,5 @@
 import "dotenv/config";
+import dns from "dns";
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -18,6 +19,13 @@ import { schoolsRouter } from "./routes/schools.routes";
 import { adminsRouter, superAdminsRouter } from "./routes/admins.routes";
 import { usersRouter } from "./routes/users.routes";
 import { parentsRouter } from "./routes/parents.routes";
+
+// Render's network has no working IPv6 route, but Node's default DNS lookup
+// order can still hand back an IPv6 address for dual-stack hosts (e.g.
+// smtp.gmail.com), causing outbound connections to fail with ENETUNREACH.
+// This forces every dns.lookup() in the process — including the ones
+// nodemailer makes internally — to prefer IPv4 results.
+dns.setDefaultResultOrder("ipv4first");
 
 const app = express();
 app.use(cors());
