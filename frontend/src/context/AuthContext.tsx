@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem("user");
     if (stored) setUser(JSON.parse(stored));
     setLoading(false);
+    (window as any).hideSplash?.();
   }, []);
 
   async function login(email: string, password: string) {

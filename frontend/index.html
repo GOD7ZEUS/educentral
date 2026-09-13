@@ -8,6 +8,128 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <div id="splash">
+      <svg viewBox="0 0 100 100" id="splash-logo" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="splashRed" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#f87171" />
+            <stop offset="55%" stop-color="#dc2626" />
+            <stop offset="100%" stop-color="#991b1b" />
+          </linearGradient>
+          <linearGradient id="splashPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#a78bfa" />
+            <stop offset="100%" stop-color="#6d28d9" />
+          </linearGradient>
+        </defs>
+        <polygon points="62,2 34,46 50,46 30,98 72,42 54,42" fill="url(#splashPurple)" opacity="0.9" />
+        <path d="M50 18 C 45 26 45 34 50 42 C 55 34 55 26 50 18 Z" fill="url(#splashRed)" />
+        <path d="M50 34 C 44 40 41 50 44 62 C 47 56 49 52 50 48 C 51 52 53 56 56 62 C 59 50 56 40 50 34 Z" fill="url(#splashRed)" />
+        <path d="M45 44 C 28 40 10 44 4 60 C 18 56 32 58 43 52 C 44 49 44 46 45 44 Z" fill="url(#splashRed)" />
+        <path d="M55 44 C 72 40 90 44 96 60 C 82 56 68 58 57 52 C 56 49 56 46 55 44 Z" fill="url(#splashRed)" />
+        <path d="M44 58 C 36 70 32 84 37 97 C 43 86 46 74 48 60 Z" fill="url(#splashRed)" />
+        <path d="M50 60 C 49 74 50 88 50 98 C 52 88 53 74 52 60 Z" fill="url(#splashRed)" />
+        <path d="M56 58 C 64 70 68 84 63 97 C 57 86 54 74 52 60 Z" fill="url(#splashRed)" />
+      </svg>
+      <div id="splash-title">EduCentral</div>
+      <div id="splash-track"><div id="splash-bar"></div></div>
+      <div id="splash-pct">0%</div>
+    </div>
+
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #ffffff;
+        transition: opacity 0.35s ease;
+      }
+      #splash-logo {
+        width: 64px;
+        height: 64px;
+        animation: splash-pulse 1.4s ease-in-out infinite;
+      }
+      #splash-title {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      #splash-track {
+        width: 220px;
+        height: 6px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+      }
+      #splash-bar {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #6366f1, #4f46e5);
+        transition: width 0.2s ease-out;
+      }
+      #splash-pct {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+      }
+      @keyframes splash-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+      }
+    </style>
+
+    <script>
+      (function () {
+        var bar = document.getElementById("splash-bar");
+        var pct = document.getElementById("splash-pct");
+        var splash = document.getElementById("splash");
+        var progress = 0;
+        var hidden = false;
+
+        var ticker = setInterval(function () {
+          // Ease toward 90% while the app boots; the real jump to 100% only
+          // happens once hideSplash() is actually called.
+          progress += (90 - progress) * 0.1 + 0.3;
+          if (progress > 90) progress = 90;
+          render();
+        }, 80);
+
+        function render() {
+          bar.style.width = progress + "%";
+          pct.textContent = Math.round(progress) + "%";
+        }
+
+        window.hideSplash = function () {
+          if (hidden) return;
+          hidden = true;
+          clearInterval(ticker);
+          progress = 100;
+          render();
+          setTimeout(function () {
+            splash.style.opacity = "0";
+            setTimeout(function () {
+              splash.remove();
+            }, 350);
+          }, 150);
+        };
+
+        // Safety net: never leave the splash stuck up if something upstream
+        // (an error before React mounts, a slow network) never calls hideSplash.
+        setTimeout(function () {
+          window.hideSplash();
+        }, 8000);
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
