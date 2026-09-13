@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// These fields hold string values (not native Postgres enums), constrained
+// by the Zod schemas in src/auth.ts and src/routes/*.
+// Role: SUPER_ADMIN | MASTER_ADMIN | ADMIN | TEACHER | STUDENT | PARENT
+// AttendanceStatus: PRESENT | ABSENT | LATE | EXCUSED
+// FeePaymentStatus: PENDING | PARTIAL | PAID
+// TransportMode: SCHOOL_BUS | PRIVATE_VEHICLE | PUBLIC_TRANSPORT | BICYCLE | WALKING | OTHER
+
+// A tenant school on the platform. SUPER_ADMIN / MASTER_ADMIN accounts are not
+// scoped to a school (schoolId null on User); every other account belongs to one.
+model School {
+  id         String   @id @default(cuid())
+  name       String
+  code       String   @unique
+  logoUrl    String?
+  websiteUrl String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  users     User[]
+  classes   SchoolClass[]
+  subjects  Subject[]
+  teachers  Teacher[]
+  students  Student[]
+  parents   Parent[]
+  notices   Notice[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String
+  name         String
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id])
+
+  teacher Teacher?
+  student Student?
+  parent  Parent?
+  notices Notice[]
+}
+
+model SchoolClass {
+  id        String    @id @default(cuid())
+  name      String
+  schoolId  String
+  school    School    @relation(fields: [schoolId], references: [id])
+  sections  Section[]
+  students  Student[]
+  fees      FeeStructure[]
+  exams     Exam[]
+  timetable Timetable[]
+
+  @@unique([schoolId, name])
+}
+
+model Section {
+  id             String      @id @default(cuid())
+  name           String
+  classId        String
+  class          SchoolClass @relation(fields: [classId], references: [id])
+  classTeacherId String?
+  classTeacher   Teacher?    @relation("ClassTeacherOf", fields: [classTeacherId], references: [id])
+  students       Student[]
+  timetable      Timetable[]
+
+  @@unique([classId, name])
+}
+
+model Teacher {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  employeeId  String
+  joiningDate DateTime @default(now())
+  subjects    Subject[]
+  timetable   Timetable[]
+  classesLed  Section[] @relation("ClassTeacherOf")
+
+  @@unique([schoolId, employeeId])
+}
+
+model Parent {
+  id       String    @id @default(cuid())
+  userId   String    @unique
+  user     User      @relation(fields: [userId], references: [id])
+  schoolId String
+  school   School    @relation(fields: [schoolId], references: [id])
+  students Student[]
+}
+
+model Student {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  schoolId      String
+  school        School    @relation(fields: [schoolId], references: [id])
+  admissionNo   String
+  admissionDate DateTime  @default(now())
+  dob           DateTime?
+  gender        String?
+  bloodGroup    String?
+  address       String?
+
+  fatherName        String?
+  fatherPhone       String?
+  fatherOccupation  String?
+  fatherQualification String?
+  motherName        String?
+  motherPhone       String?
+  motherOccupation  String?
+  motherQualification String?
+
+  transportMode String?
+
+  classId       String?
+  class         SchoolClass? @relation(fields: [classId], references: [id])
+  sectionId     String?
+  section       Section?  @relation(fields: [sectionId], references: [id])
+  parentId      String?
+  parent        Parent?   @relation(fields: [parentId], references: [id])
+
+  attendance    Attendance[]
+  feePayments   FeePayment[]
+  results       ExamResult[]
+
+  @@unique([schoolId, admissionNo])
+}
+
+model Subject {
+  id        String    @id @default(cuid())
+  name      String
+  code      String
+  schoolId  String
+  school    School    @relation(fields: [schoolId], references: [id])
+  teachers  Teacher[]
+  results   ExamResult[]
+  timetable Timetable[]
+
+  @@unique([schoolId, name])
+  @@unique([schoolId, code])
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  date      DateTime
+  status    String
+  markedBy  String?
+  createdAt DateTime         @default(now())
+
+  @@unique([studentId, date])
+}
+
+model FeeStructure {
+  id      String   @id @default(cuid())
+  classId String
+  class   SchoolClass @relation(fields: [classId], references: [id])
+  term    String
+  amount  Float
+  dueDate DateTime
+
+  payments FeePayment[]
+}
+
+model FeePayment {
+  id             String           @id @default(cuid())
+  studentId      String
+  student        Student          @relation(fields: [studentId], references: [id])
+  feeStructureId String
+  feeStructure   FeeStructure     @relation(fields: [feeStructureId], references: [id])
+  amountPaid     Float
+  paymentDate    DateTime         @default(now())
+  method         String?
+  status         String   @default("PENDING")
+}
+
+model Exam {
+  id        String   @id @default(cuid())
+  name      String
+  classId   String
+  class     SchoolClass @relation(fields: [classId], references: [id])
+  term      String
+  startDate DateTime
+  endDate   DateTime
+
+  results ExamResult[]
+}
+
+model ExamResult {
+  id             String  @id @default(cuid())
+  examId         String
+  exam           Exam    @relation(fields: [examId], references: [id])
+  studentId      String
+  student        Student @relation(fields: [studentId], references: [id])
+  subjectId      String
+  subject        Subject @relation(fields: [subjectId], references: [id])
+  marksObtained  Float
+  maxMarks       Float
+  grade          String?
+
+  @@unique([examId, studentId, subjectId])
+}
+
+model Timetable {
+  id        String      @id @default(cuid())
+  classId   String
+  class     SchoolClass @relation(fields: [classId], references: [id])
+  sectionId String
+  section   Section     @relation(fields: [sectionId], references: [id])
+  subjectId String
+  subject   Subject     @relation(fields: [subjectId], references: [id])
+  teacherId String
+  teacher   Teacher     @relation(fields: [teacherId], references: [id])
+  dayOfWeek Int
+  startTime String
+  endTime   String
+}
+
+model Notice {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  audience   String?
+  schoolId   String
+  school     School   @relation(fields: [schoolId], references: [id])
+  postedById String
+  postedBy   User     @relation(fields: [postedById], references: [id])
+  createdAt  DateTime @default(now())
+}

@@ -1,0 +1,66 @@
+interface PhoenixLogoProps {
+  className?: string;
+}
+
+export function PhoenixLogo({ className }: PhoenixLogoProps) {
+  return (
+    <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="phoenixRed" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#f87171" />
+          <stop offset="55%" stopColor="#dc2626" />
+          <stop offset="100%" stopColor="#991b1b" />
+        </linearGradient>
+        <linearGradient id="phoenixPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#a78bfa" />
+          <stop offset="100%" stopColor="#6d28d9" />
+        </linearGradient>
+      </defs>
+
+      {/* Purple lightning bolt, behind the phoenix */}
+      <polygon
+        points="62,2 34,46 50,46 30,98 72,42 54,42"
+        fill="url(#phoenixPurple)"
+        opacity="0.9"
+      />
+
+      {/* Red phoenix: head/flame crest */}
+      <path
+        d="M50 18 C 45 26 45 34 50 42 C 55 34 55 26 50 18 Z"
+        fill="url(#phoenixRed)"
+      />
+
+      {/* Body */}
+      <path
+        d="M50 34 C 44 40 41 50 44 62 C 47 56 49 52 50 48 C 51 52 53 56 56 62 C 59 50 56 40 50 34 Z"
+        fill="url(#phoenixRed)"
+      />
+
+      {/* Left wing */}
+      <path
+        d="M45 44 C 28 40 10 44 4 60 C 18 56 32 58 43 52 C 44 49 44 46 45 44 Z"
+        fill="url(#phoenixRed)"
+      />
+
+      {/* Right wing */}
+      <path
+        d="M55 44 C 72 40 90 44 96 60 C 82 56 68 58 57 52 C 56 49 56 46 55 44 Z"
+        fill="url(#phoenixRed)"
+      />
+
+      {/* Tail feathers */}
+      <path
+        d="M44 58 C 36 70 32 84 37 97 C 43 86 46 74 48 60 Z"
+        fill="url(#phoenixRed)"
+      />
+      <path
+        d="M50 60 C 49 74 50 88 50 98 C 52 88 53 74 52 60 Z"
+        fill="url(#phoenixRed)"
+      />
+      <path
+        d="M56 58 C 64 70 68 84 63 97 C 57 86 54 74 52 60 Z"
+        fill="url(#phoenixRed)"
+      />
+    </svg>
+  );
+}
