@@ -3,48 +3,5 @@ interface PhoenixLogoProps {
 }
 
 export function PhoenixLogo({ className }: PhoenixLogoProps) {
-  return (
-    <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="phoenixFire" gradientUnits="userSpaceOnUse" cx="50" cy="58" r="58">
-          <stop offset="0%" stopColor="#fde047" />
-          <stop offset="40%" stopColor="#fb923c" />
-          <stop offset="100%" stopColor="#b91c1c" />
-        </radialGradient>
-      </defs>
-
-      {/* Right wing feathers */}
-      <path d="M55 47 Q74.2 59.3 97 58 Q77.8 45.7 55 47 Z" fill="url(#phoenixFire)" />
-      <path d="M55 47 Q77.8 51.4 99 42 Q76.2 37.6 55 47 Z" fill="url(#phoenixFire)" />
-      <path d="M55 47 Q77.9 42.1 94 25 Q71.1 29.9 55 47 Z" fill="url(#phoenixFire)" />
-      <path d="M55 47 Q75.6 31.6 84 10 Q64.4 26.4 55 47 Z" fill="url(#phoenixFire)" />
-      <path d="M55 47 Q70.3 25.1 72 6 Q57.7 21.9 55 47 Z" fill="url(#phoenixFire)" />
-
-      {/* Left wing feathers (mirrored) */}
-      <path d="M45 47 Q25.8 59.3 3 58 Q22.2 45.7 45 47 Z" fill="url(#phoenixFire)" />
-      <path d="M45 47 Q22.2 51.4 1 42 Q23.8 37.6 45 47 Z" fill="url(#phoenixFire)" />
-      <path d="M45 47 Q22.1 42.1 6 25 Q28.9 29.9 45 47 Z" fill="url(#phoenixFire)" />
-      <path d="M45 47 Q24.4 31.6 16 10 Q35.6 26.4 45 47 Z" fill="url(#phoenixFire)" />
-      <path d="M45 47 Q29.7 25.1 28 6 Q42.3 21.9 45 47 Z" fill="url(#phoenixFire)" />
-
-      {/* Body */}
-      <path
-        d="M50 26 C 45 32 42 39 44 48 C 47 43 49 39 50 36 C 51 39 53 43 56 48 C 58 39 55 32 50 26 Z"
-        fill="url(#phoenixFire)"
-      />
-
-      {/* Head */}
-      <path
-        d="M50 7 C 41 10 36 19 41 29 C 44 25 47 21 50 18 C 53 21 56 25 59 29 C 64 19 59 10 50 7 Z"
-        fill="url(#phoenixFire)"
-      />
-      {/* Beak */}
-      <path d="M47 27 Q50 34 53 27 Q50 30 47 27 Z" fill="url(#phoenixFire)" />
-
-      {/* Tail */}
-      <path d="M44 58 C 36 70 32 84 37 97 C 43 86 46 74 48 60 Z" fill="url(#phoenixFire)" />
-      <path d="M50 60 C 49 74 50 88 50 98 C 52 88 53 74 52 60 Z" fill="url(#phoenixFire)" />
-      <path d="M56 58 C 64 70 68 84 63 97 C 57 86 54 74 52 60 Z" fill="url(#phoenixFire)" />
-    </svg>
-  );
+  return <img src="/phoenix-logo.jpg" alt="EduCentral" className={`object-contain ${className ?? ""}`} />;
 }
