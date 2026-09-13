@@ -89,3 +89,41 @@ usersRouter.patch("/:id", async (req, res) => {
 
   res.json({ id: updated.id, name: updated.name, email: updated.email, role: updated.role, isActive: updated.isActive });
 });
+
+// Same permission split as PATCH above: SUPER_ADMIN/MASTER_ADMIN can delete
+// ADMIN and TEACHER accounts; only MASTER_ADMIN can delete a SUPER_ADMIN.
+usersRouter.delete("/:id", async (req, res) => {
+  const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!target) return res.status(404).json({ error: "User not found" });
+
+  const isMaster = req.user!.role === "MASTER_ADMIN";
+  const deletableRoles = isMaster ? ["ADMIN", "TEACHER", "SUPER_ADMIN"] : ["ADMIN", "TEACHER"];
+  if (!deletableRoles.includes(target.role)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (target.role === "TEACHER") {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: target.id },
+      include: { timetable: true, classesLed: true },
+    });
+    if (teacher && (teacher.timetable.length > 0 || teacher.classesLed.length > 0)) {
+      return res.status(409).json({
+        error: "Remove this teacher from the timetable and as a class teacher before deleting",
+      });
+    }
+    await prisma.$transaction([
+      ...(teacher ? [prisma.teacher.delete({ where: { id: teacher.id } })] : []),
+      prisma.user.delete({ where: { id: target.id } }),
+    ]);
+    return res.status(204).send();
+  }
+
+  const noticeCount = await prisma.notice.count({ where: { postedById: target.id } });
+  if (noticeCount > 0) {
+    return res.status(409).json({ error: "Reassign or delete this user's notices before deleting the account" });
+  }
+
+  await prisma.user.delete({ where: { id: target.id } });
+  res.status(204).send();
+});

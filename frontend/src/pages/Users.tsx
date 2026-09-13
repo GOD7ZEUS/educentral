@@ -129,6 +129,17 @@ export function Users() {
     }
   }
 
+  async function deleteUser(u: UserRow) {
+    if (!window.confirm(`Delete ${u.name} (${ROLE_LABELS[u.role] ?? u.role})? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/users/${u.id}`);
+      setEditingId(null);
+      loadUsers();
+    } catch (err: any) {
+      setEditError(extractErrorMessage(err, "Could not delete user"));
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -264,6 +275,10 @@ export function Users() {
                           <button onClick={cancelEdit}
                             className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
                             Cancel
+                          </button>
+                          <button onClick={() => deleteUser(u)}
+                            className="ml-auto rounded-md px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                            Delete
                           </button>
                         </div>
                       </div>
