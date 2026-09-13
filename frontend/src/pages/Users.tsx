@@ -28,8 +28,17 @@ interface UserRow {
   school: { id: string; name: string } | null;
 }
 
-const emptyAdminForm = { schoolId: "", firstName: "", lastName: "", email: "", password: "", dob: "" };
-const emptySuperAdminForm = { firstName: "", lastName: "", email: "", password: "", dob: "" };
+const emptyNewForm = {
+  schoolId: "", firstName: "", lastName: "", email: "", password: "", dob: "",
+  employeeId: "", admissionNo: "",
+};
+
+const CREATABLE_ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
+  TEACHER: "Teacher",
+  STUDENT: "Student",
+};
 
 export function Users() {
   const { user } = useAuth();
@@ -37,17 +46,20 @@ export function Users() {
   const roleFilterOptions = isMaster
     ? ["ADMIN", "TEACHER", "STUDENT", "PARENT", "SUPER_ADMIN"]
     : ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT"];
+  // Master creates Super Admin, Admin, Teacher; Super Admin creates Admin,
+  // Teacher, Student (per the platform hierarchy) — never Parent here.
+  const creatableRoles = isMaster
+    ? ["SUPER_ADMIN", "ADMIN", "TEACHER"]
+    : ["ADMIN", "TEACHER", "STUDENT"];
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolFilter, setSchoolFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
 
-  const [adminForm, setAdminForm] = useState(emptyAdminForm);
-  const [adminError, setAdminError] = useState<string | null>(null);
-
-  const [superAdminForm, setSuperAdminForm] = useState(emptySuperAdminForm);
-  const [superAdminError, setSuperAdminError] = useState<string | null>(null);
+  const [newRole, setNewRole] = useState(creatableRoles[0]);
+  const [newForm, setNewForm] = useState(emptyNewForm);
+  const [newError, setNewError] = useState<string | null>(null);
 
   const [showForm, setShowForm] = useState(false);
 
@@ -62,29 +74,26 @@ export function Users() {
 
   useEffect(loadUsers, [schoolFilter, roleFilter]);
 
-  async function handleAdminSubmit(e: FormEvent) {
+  async function handleNewSubmit(e: FormEvent) {
     e.preventDefault();
-    setAdminError(null);
+    setNewError(null);
+    const { schoolId, firstName, lastName, email, password, dob, employeeId, admissionNo } = newForm;
+    const dobIso = toIsoDob(dob);
     try {
-      await api.post("/admins", { ...adminForm, dob: toIsoDob(adminForm.dob) });
-      setAdminForm(emptyAdminForm);
+      if (newRole === "SUPER_ADMIN") {
+        await api.post("/super-admins", { firstName, lastName, email, password, dob: dobIso });
+      } else if (newRole === "ADMIN") {
+        await api.post("/admins", { schoolId, firstName, lastName, email, password, dob: dobIso });
+      } else if (newRole === "TEACHER") {
+        await api.post("/teachers", { firstName, lastName, email, password, employeeId, dob: dobIso }, { params: { schoolId } });
+      } else {
+        await api.post("/students", { firstName, lastName, email, password, admissionNo, dob: dobIso }, { params: { schoolId } });
+      }
+      setNewForm(emptyNewForm);
       setShowForm(false);
       loadUsers();
     } catch (err: any) {
-      setAdminError(extractErrorMessage(err, "Could not add admin"));
-    }
-  }
-
-  async function handleSuperAdminSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSuperAdminError(null);
-    try {
-      await api.post("/super-admins", { ...superAdminForm, dob: toIsoDob(superAdminForm.dob) });
-      setSuperAdminForm(emptySuperAdminForm);
-      setShowForm(false);
-      loadUsers();
-    } catch (err: any) {
-      setSuperAdminError(extractErrorMessage(err, "Could not add super admin"));
+      setNewError(extractErrorMessage(err, `Could not add ${CREATABLE_ROLE_LABELS[newRole].toLowerCase()}`));
     }
   }
 
@@ -166,62 +175,59 @@ export function Users() {
         </select>
       </div>
 
-      {showForm && isMaster && (
-        <form onSubmit={handleSuperAdminSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
-          {superAdminError && <p className="sm:col-span-2 text-sm text-red-600">{superAdminError}</p>}
-          <input required placeholder="First name" value={superAdminForm.firstName}
-            onChange={(e) => setSuperAdminForm({ ...superAdminForm, firstName: e.target.value })}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <input required placeholder="Last name" value={superAdminForm.lastName}
-            onChange={(e) => setSuperAdminForm({ ...superAdminForm, lastName: e.target.value })}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <input required type="email" placeholder="Email" value={superAdminForm.email}
-            onChange={(e) => setSuperAdminForm({ ...superAdminForm, email: e.target.value })}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <label className="flex flex-col gap-1 text-xs text-slate-500">
-            Date of birth
-            <input type="date" value={superAdminForm.dob}
-              onChange={(e) => setSuperAdminForm({ ...superAdminForm, dob: e.target.value })}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
-          </label>
-          <input required type="password" placeholder="Password (min 8 chars)" value={superAdminForm.password}
-            onChange={(e) => setSuperAdminForm({ ...superAdminForm, password: e.target.value })}
-            className="sm:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <button className="sm:col-span-2 rounded-md bg-indigo-600 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-            Create Super Admin
-          </button>
-        </form>
-      )}
+      {showForm && (
+        <form onSubmit={handleNewSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
+          {newError && <p className="sm:col-span-2 text-sm text-red-600">{newError}</p>}
 
-      {showForm && !isMaster && (
-        <form onSubmit={handleAdminSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
-          {adminError && <p className="sm:col-span-2 text-sm text-red-600">{adminError}</p>}
-          <select required value={adminForm.schoolId}
-            onChange={(e) => setAdminForm({ ...adminForm, schoolId: e.target.value })}
-            className="sm:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm">
-            <option value="">Select school</option>
-            {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <input required placeholder="First name" value={adminForm.firstName}
-            onChange={(e) => setAdminForm({ ...adminForm, firstName: e.target.value })}
+          <label className="sm:col-span-2 flex flex-col gap-1 text-xs text-slate-500">
+            Role to create
+            <select value={newRole} onChange={(e) => setNewRole(e.target.value)}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800">
+              {creatableRoles.map((r) => <option key={r} value={r}>{CREATABLE_ROLE_LABELS[r]}</option>)}
+            </select>
+          </label>
+
+          {newRole !== "SUPER_ADMIN" && (
+            <select required value={newForm.schoolId}
+              onChange={(e) => setNewForm({ ...newForm, schoolId: e.target.value })}
+              className="sm:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm">
+              <option value="">Select school</option>
+              {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
+
+          <input required placeholder="First name" value={newForm.firstName}
+            onChange={(e) => setNewForm({ ...newForm, firstName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <input required placeholder="Last name" value={adminForm.lastName}
-            onChange={(e) => setAdminForm({ ...adminForm, lastName: e.target.value })}
+          <input required placeholder="Last name" value={newForm.lastName}
+            onChange={(e) => setNewForm({ ...newForm, lastName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <input required type="email" placeholder="Email" value={adminForm.email}
-            onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+          <input required type="email" placeholder="Email" value={newForm.email}
+            onChange={(e) => setNewForm({ ...newForm, email: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <label className="flex flex-col gap-1 text-xs text-slate-500">
             Date of birth
-            <input type="date" value={adminForm.dob}
-              onChange={(e) => setAdminForm({ ...adminForm, dob: e.target.value })}
+            <input type="date" value={newForm.dob}
+              onChange={(e) => setNewForm({ ...newForm, dob: e.target.value })}
               className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
           </label>
-          <input required type="password" placeholder="Password (min 8 chars)" value={adminForm.password}
-            onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+
+          {newRole === "TEACHER" && (
+            <input required placeholder="Employee ID" value={newForm.employeeId}
+              onChange={(e) => setNewForm({ ...newForm, employeeId: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          )}
+          {newRole === "STUDENT" && (
+            <input required placeholder="Admission No." value={newForm.admissionNo}
+              onChange={(e) => setNewForm({ ...newForm, admissionNo: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          )}
+
+          <input required type="password" placeholder="Password (min 8 chars)" value={newForm.password}
+            onChange={(e) => setNewForm({ ...newForm, password: e.target.value })}
             className="sm:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <button className="sm:col-span-2 rounded-md bg-indigo-600 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-            Create Admin
+            Create {CREATABLE_ROLE_LABELS[newRole]}
           </button>
         </form>
       )}

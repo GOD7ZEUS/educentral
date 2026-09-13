@@ -3,11 +3,18 @@ import nodemailer from "nodemailer";
 const gmailUser = process.env.GMAIL_USER;
 const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
+// Explicit host/port (STARTTLS on 587) rather than the "service: gmail"
+// shorthand (which defaults to implicit TLS on 465) — 465 is more likely to
+// be firewalled/timed-out on cloud hosts than 587.
 const transporter =
   gmailUser && gmailAppPassword
     ? nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
         auth: { user: gmailUser, pass: gmailAppPassword },
+        connectionTimeout: 10_000,
       })
     : null;
 
