@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
 
 interface ClassRow {
@@ -125,7 +126,7 @@ export function Exams() {
       setEditingExam(false);
       loadExams();
     } catch (err: any) {
-      setExamError(err.response?.data?.error?.formErrors?.[0] ?? "Could not save changes");
+      setExamError(extractErrorMessage(err, "Could not save changes"));
     }
   }
 
@@ -138,7 +139,7 @@ export function Exams() {
       setConfirmDeleteExam(false);
       loadExams();
     } catch (err: any) {
-      setExamError(err.response?.data?.error ?? "Could not delete exam");
+      setExamError(extractErrorMessage(err, "Could not delete exam"));
       setConfirmDeleteExam(false);
     }
   }

@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 import { useSchoolContext } from "../context/SchoolContext";
 
 interface SchoolRow {
@@ -64,7 +65,7 @@ export function Schools() {
       setShowForm(false);
       load();
     } catch (err: any) {
-      setError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not add school");
+      setError(extractErrorMessage(err, "Could not add school"));
     }
   }
 

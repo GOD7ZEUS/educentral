@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 
 interface ClassRow {
   id: string;
@@ -86,7 +87,7 @@ export function Fees() {
       setEditingStructureId(null);
       loadStructures();
     } catch (err: any) {
-      setStructureError(err.response?.data?.error?.formErrors?.[0] ?? "Could not save changes");
+      setStructureError(extractErrorMessage(err, "Could not save changes"));
     }
   }
 
@@ -97,7 +98,7 @@ export function Fees() {
       setConfirmDeleteStructureId(null);
       loadStructures();
     } catch (err: any) {
-      setStructureError(err.response?.data?.error ?? "Could not delete fee structure");
+      setStructureError(extractErrorMessage(err, "Could not delete fee structure"));
       setConfirmDeleteStructureId(null);
     }
   }

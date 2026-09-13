@@ -1,5 +1,6 @@
 import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
 
 interface ClassRow {
@@ -127,7 +128,7 @@ export function Students() {
       setShowForm(false);
       loadStudents();
     } catch (err: any) {
-      setError(err.response?.data?.error?.formErrors?.[0] ?? "Could not add student");
+      setError(extractErrorMessage(err, "Could not add student"));
     }
   }
 
@@ -166,7 +167,7 @@ export function Students() {
       setEditingId(null);
       loadStudents();
     } catch (err: any) {
-      setEditError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not save changes");
+      setEditError(extractErrorMessage(err, "Could not save changes"));
     }
   }
 

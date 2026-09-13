@@ -1,5 +1,6 @@
 import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
 
 interface SubjectRow {
@@ -65,7 +66,7 @@ export function Teachers() {
       setShowForm(false);
       loadTeachers();
     } catch (err: any) {
-      setError(err.response?.data?.error?.formErrors?.[0] ?? "Could not add teacher");
+      setError(extractErrorMessage(err, "Could not add teacher"));
     }
   }
 
@@ -87,7 +88,7 @@ export function Teachers() {
       setEditingId(null);
       loadTeachers();
     } catch (err: any) {
-      setEditError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not save changes");
+      setEditError(extractErrorMessage(err, "Could not save changes"));
     }
   }
 
@@ -98,7 +99,7 @@ export function Teachers() {
       setConfirmDeleteId(null);
       loadTeachers();
     } catch (err: any) {
-      setDeleteError(err.response?.data?.error ?? "Could not delete teacher");
+      setDeleteError(extractErrorMessage(err, "Could not delete teacher"));
       setConfirmDeleteId(null);
     }
   }

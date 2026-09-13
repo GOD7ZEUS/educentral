@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 
 interface TeacherRow {
   id: string;
@@ -75,7 +76,7 @@ export function Classes() {
       setEditingClassId(null);
       load();
     } catch (err: any) {
-      setError(err.response?.data?.error?.formErrors?.[0] ?? "Could not rename class");
+      setError(extractErrorMessage(err, "Could not rename class"));
     }
   }
 
@@ -86,7 +87,7 @@ export function Classes() {
       setConfirmDeleteClassId(null);
       load();
     } catch (err: any) {
-      setError(err.response?.data?.error ?? "Could not delete class");
+      setError(extractErrorMessage(err, "Could not delete class"));
       setConfirmDeleteClassId(null);
     }
   }
@@ -99,7 +100,7 @@ export function Classes() {
       setEditingSectionId(null);
       load();
     } catch (err: any) {
-      setError(err.response?.data?.error?.formErrors?.[0] ?? "Could not rename section");
+      setError(extractErrorMessage(err, "Could not rename section"));
     }
   }
 
@@ -110,7 +111,7 @@ export function Classes() {
       setConfirmDeleteSectionId(null);
       load();
     } catch (err: any) {
-      setError(err.response?.data?.error ?? "Could not delete section");
+      setError(extractErrorMessage(err, "Could not delete section"));
       setConfirmDeleteSectionId(null);
     }
   }

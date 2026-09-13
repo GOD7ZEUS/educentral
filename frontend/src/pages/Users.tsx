@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 import { useAuth } from "../context/AuthContext";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -69,7 +70,7 @@ export function Users() {
       setShowAdminForm(false);
       loadUsers();
     } catch (err: any) {
-      setAdminError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not add admin");
+      setAdminError(extractErrorMessage(err, "Could not add admin"));
     }
   }
 
@@ -82,7 +83,7 @@ export function Users() {
       setShowSuperAdminForm(false);
       loadUsers();
     } catch (err: any) {
-      setSuperAdminError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not add super admin");
+      setSuperAdminError(extractErrorMessage(err, "Could not add super admin"));
     }
   }
 
@@ -113,11 +114,6 @@ export function Users() {
           </button>
         </div>
       </div>
-      <p className="mb-4 text-sm text-slate-500">
-        {isMaster
-          ? "Every account on the platform, across every school and role."
-          : "Admin and Teacher accounts across every school. Master Admin accounts aren't shown here."}
-      </p>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <select value={schoolFilter} onChange={(e) => setSchoolFilter(e.target.value)}

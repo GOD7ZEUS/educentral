@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 
 interface SchoolInfo {
   id: string;
@@ -77,7 +78,7 @@ export function SchoolDetail() {
       setShowAdminForm(false);
       loadAdmins();
     } catch (err: any) {
-      setAdminError(err.response?.data?.error ?? "Could not add admin");
+      setAdminError(extractErrorMessage(err, "Could not add admin"));
     }
   }
 

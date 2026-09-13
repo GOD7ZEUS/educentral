@@ -1,5 +1,6 @@
 import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { extractErrorMessage } from "../api/errors";
 
 interface StudentRow {
   id: string;
@@ -51,7 +52,7 @@ export function Parents() {
       setShowForm(false);
       loadParents();
     } catch (err: any) {
-      setError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not add guardian");
+      setError(extractErrorMessage(err, "Could not add guardian"));
     }
   }
 
@@ -68,7 +69,7 @@ export function Parents() {
       setEditingId(null);
       loadParents();
     } catch (err: any) {
-      setEditError(err.response?.data?.error?.formErrors?.[0] ?? err.response?.data?.error ?? "Could not save changes");
+      setEditError(extractErrorMessage(err, "Could not save changes"));
     }
   }
 

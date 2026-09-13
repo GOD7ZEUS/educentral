@@ -140,9 +140,6 @@ export function Attendance() {
 
           {!submitted ? (
             <>
-              <p className="mb-3 text-xs text-slate-400">
-                Tap a student's roll number to mark them present. Untapped students are marked absent.
-              </p>
               <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
                 {roster.map((s) => {
                   const isPresent = present.has(s.id);
