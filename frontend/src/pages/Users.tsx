@@ -34,7 +34,7 @@ export function Users() {
   const { user } = useAuth();
   const isMaster = user?.role === "MASTER_ADMIN";
   const roleFilterOptions = isMaster
-    ? ["ADMIN", "TEACHER", "STUDENT", "PARENT", "SUPER_ADMIN", "MASTER_ADMIN"]
+    ? ["ADMIN", "TEACHER", "STUDENT", "PARENT", "SUPER_ADMIN"]
     : ["ADMIN", "TEACHER"];
 
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -43,12 +43,12 @@ export function Users() {
   const [roleFilter, setRoleFilter] = useState("");
 
   const [adminForm, setAdminForm] = useState(emptyAdminForm);
-  const [showAdminForm, setShowAdminForm] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
 
   const [superAdminForm, setSuperAdminForm] = useState(emptySuperAdminForm);
-  const [showSuperAdminForm, setShowSuperAdminForm] = useState(false);
   const [superAdminError, setSuperAdminError] = useState<string | null>(null);
+
+  const [showForm, setShowForm] = useState(false);
 
   function loadUsers() {
     api.get("/users", { params: { schoolId: schoolFilter || undefined, role: roleFilter || undefined } })
@@ -67,7 +67,7 @@ export function Users() {
     try {
       await api.post("/admins", adminForm);
       setAdminForm(emptyAdminForm);
-      setShowAdminForm(false);
+      setShowForm(false);
       loadUsers();
     } catch (err: any) {
       setAdminError(extractErrorMessage(err, "Could not add admin"));
@@ -80,7 +80,7 @@ export function Users() {
     try {
       await api.post("/super-admins", superAdminForm);
       setSuperAdminForm(emptySuperAdminForm);
-      setShowSuperAdminForm(false);
+      setShowForm(false);
       loadUsers();
     } catch (err: any) {
       setSuperAdminError(extractErrorMessage(err, "Could not add super admin"));
@@ -97,22 +97,12 @@ export function Users() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">Users</h1>
-        <div className="flex gap-2">
-          {isMaster && (
-            <button
-              onClick={() => setShowSuperAdminForm((v) => !v)}
-              className="rounded-md border border-indigo-600 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
-            >
-              {showSuperAdminForm ? "Cancel" : "Add Super Admin"}
-            </button>
-          )}
-          <button
-            onClick={() => setShowAdminForm((v) => !v)}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            {showAdminForm ? "Cancel" : "Add Admin"}
-          </button>
-        </div>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          {showForm ? "Cancel" : "Add New"}
+        </button>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
@@ -128,9 +118,8 @@ export function Users() {
         </select>
       </div>
 
-      {showSuperAdminForm && (
-        <form onSubmit={handleSuperAdminSubmit} className="mb-6 grid gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm sm:grid-cols-2">
-          <p className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-indigo-600">New Super Admin</p>
+      {showForm && isMaster && (
+        <form onSubmit={handleSuperAdminSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
           {superAdminError && <p className="sm:col-span-2 text-sm text-red-600">{superAdminError}</p>}
           <input required placeholder="Full name" value={superAdminForm.name}
             onChange={(e) => setSuperAdminForm({ ...superAdminForm, name: e.target.value })}
@@ -147,7 +136,7 @@ export function Users() {
         </form>
       )}
 
-      {showAdminForm && (
+      {showForm && !isMaster && (
         <form onSubmit={handleAdminSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
           {adminError && <p className="sm:col-span-2 text-sm text-red-600">{adminError}</p>}
           <select required value={adminForm.schoolId}
