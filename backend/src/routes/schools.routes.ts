@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { PLATFORM_ROLES, requireAuth, requireRole } from "../auth";
 import { fileToDataUri, logoUpload } from "../upload";
+import { sendWelcomeEmail } from "../email";
 
 export const schoolsRouter = Router();
 
@@ -46,15 +47,18 @@ schoolsRouter.get("/:id/admins", async (req, res) => {
 });
 
 const createAdminSchema = z.object({
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
+  dob: z.string().datetime().optional(),
 });
 
 schoolsRouter.post("/:id/admins", async (req, res) => {
   const parsed = createAdminSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { name, email, password } = parsed.data;
+  const { firstName, lastName, email, password, dob } = parsed.data;
+  const name = `${firstName} ${lastName}`.trim();
 
   const school = await prisma.school.findUnique({ where: { id: req.params.id } });
   if (!school) return res.status(404).json({ error: "School not found" });
@@ -64,8 +68,9 @@ schoolsRouter.post("/:id/admins", async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await prisma.user.create({
-    data: { name, email, passwordHash, role: "ADMIN", schoolId: school.id },
+    data: { name, email, passwordHash, role: "ADMIN", schoolId: school.id, dob: dob ? new Date(dob) : undefined },
   });
+  sendWelcomeEmail(admin.email, admin.name);
   res.status(201).json({ id: admin.id, name: admin.name, email: admin.email, isActive: admin.isActive });
 });
 

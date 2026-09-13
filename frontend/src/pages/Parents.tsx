@@ -1,6 +1,7 @@
 import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { toIsoDob } from "../utils/dob";
 
 interface StudentRow {
   id: string;
@@ -14,7 +15,7 @@ interface ParentRow {
   students: { id: string; admissionNo: string; user: { name: string } }[];
 }
 
-const emptyForm = { name: "", email: "", password: "", studentId: "" };
+const emptyForm = { firstName: "", lastName: "", email: "", password: "", dob: "", studentId: "" };
 
 export function Parents() {
   const [parents, setParents] = useState<ParentRow[]>([]);
@@ -43,9 +44,11 @@ export function Parents() {
     setError(null);
     try {
       await api.post("/parents", {
-        name: form.name,
+        firstName: form.firstName,
+        lastName: form.lastName,
         email: form.email,
         password: form.password,
+        dob: toIsoDob(form.dob),
         studentId: form.studentId || undefined,
       });
       setForm(emptyForm);
@@ -94,12 +97,21 @@ export function Parents() {
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
           {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
-          <input required placeholder="Full name" value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input required placeholder="First name" value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <input required placeholder="Last name" value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input required type="email" placeholder="Email" value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            Date of birth
+            <input type="date" value={form.dob}
+              onChange={(e) => setForm({ ...form, dob: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
+          </label>
           <input required type="password" placeholder="Password (min 8 chars)" value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />

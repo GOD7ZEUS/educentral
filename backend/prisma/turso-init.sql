@@ -16,6 +16,7 @@ CREATE TABLE "User" (
     "passwordHash" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "dob" DATETIME,
     "phone" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

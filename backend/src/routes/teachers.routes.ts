@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { ADMIN_OR_PLATFORM, requireAuth, requireRole, resolveSchoolId } from "../auth";
+import { sendWelcomeEmail } from "../email";
 
 export const teachersRouter = Router();
 
@@ -36,17 +37,20 @@ teachersRouter.get("/:id", async (req, res) => {
 });
 
 const createTeacherSchema = z.object({
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
   employeeId: z.string().min(1),
+  dob: z.string().datetime().optional(),
   subjectIds: z.array(z.string()).optional(),
 });
 
 teachersRouter.post("/", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => {
   const parsed = createTeacherSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { name, email, password, employeeId, subjectIds } = parsed.data;
+  const { firstName, lastName, email, password, employeeId, dob, subjectIds } = parsed.data;
+  const name = `${firstName} ${lastName}`.trim();
 
   const schoolId = resolveSchoolId(req);
   if (!schoolId) return res.status(400).json({ error: "Select a school first" });
@@ -57,7 +61,7 @@ teachersRouter.post("/", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => 
   const passwordHash = await bcrypt.hash(password, 10);
   const teacher = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { name, email, passwordHash, role: "TEACHER", schoolId },
+      data: { name, email, passwordHash, role: "TEACHER", schoolId, dob: dob ? new Date(dob) : undefined },
     });
     return tx.teacher.create({
       data: {
@@ -69,6 +73,7 @@ teachersRouter.post("/", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => 
       include: { user: true, subjects: true },
     });
   });
+  sendWelcomeEmail(teacher.user.email, teacher.user.name);
   res.status(201).json(teacher);
 });
 

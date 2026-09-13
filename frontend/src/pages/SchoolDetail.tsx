@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { toIsoDob } from "../utils/dob";
 
 interface SchoolInfo {
   id: string;
@@ -42,7 +43,7 @@ interface AdminRow {
   isActive: boolean;
 }
 
-const emptyAdminForm = { name: "", email: "", password: "" };
+const emptyAdminForm = { firstName: "", lastName: "", email: "", password: "", dob: "" };
 
 export function SchoolDetail() {
   const { id } = useParams<{ id: string }>();
@@ -73,7 +74,7 @@ export function SchoolDetail() {
     e.preventDefault();
     setAdminError(null);
     try {
-      await api.post(`/schools/${id}/admins`, adminForm);
+      await api.post(`/schools/${id}/admins`, { ...adminForm, dob: toIsoDob(adminForm.dob) });
       setAdminForm(emptyAdminForm);
       setShowAdminForm(false);
       loadAdmins();
@@ -151,15 +152,24 @@ export function SchoolDetail() {
         {showAdminForm && (
           <form onSubmit={addAdmin} className="grid gap-2 border-b border-slate-100 p-4 sm:grid-cols-3">
             {adminError && <p className="sm:col-span-3 text-sm text-red-600">{adminError}</p>}
-            <input required placeholder="Full name" value={adminForm.name}
-              onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
+            <input required placeholder="First name" value={adminForm.firstName}
+              onChange={(e) => setAdminForm({ ...adminForm, firstName: e.target.value })}
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+            <input required placeholder="Last name" value={adminForm.lastName}
+              onChange={(e) => setAdminForm({ ...adminForm, lastName: e.target.value })}
               className="rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
             <input required type="email" placeholder="Email" value={adminForm.email}
               onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
               className="rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+            <label className="flex flex-col gap-1 text-xs text-slate-500">
+              Date of birth
+              <input type="date" value={adminForm.dob}
+                onChange={(e) => setAdminForm({ ...adminForm, dob: e.target.value })}
+                className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-800" />
+            </label>
             <input required type="password" placeholder="Password (min 8 chars)" value={adminForm.password}
               onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm sm:col-span-2" />
             <button className="sm:col-span-3 rounded-md bg-indigo-600 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">
               Create Admin
             </button>

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { PLATFORM_ROLES, requireAuth, requireRole } from "../auth";
+import { sendWelcomeEmail } from "../email";
 
 // A platform-wide "Users" view of every school's admin accounts, plus
 // super-admin provisioning. SUPER_ADMIN / MASTER_ADMIN can create school
@@ -32,15 +33,18 @@ adminsRouter.get("/", async (_req, res) => {
 
 const createAdminSchema = z.object({
   schoolId: z.string().min(1),
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
+  dob: z.string().datetime().optional(),
 });
 
 adminsRouter.post("/", async (req, res) => {
   const parsed = createAdminSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { schoolId, name, email, password } = parsed.data;
+  const { schoolId, firstName, lastName, email, password, dob } = parsed.data;
+  const name = `${firstName} ${lastName}`.trim();
 
   const school = await prisma.school.findUnique({ where: { id: schoolId } });
   if (!school) return res.status(404).json({ error: "School not found" });
@@ -50,8 +54,9 @@ adminsRouter.post("/", async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await prisma.user.create({
-    data: { name, email, passwordHash, role: "ADMIN", schoolId },
+    data: { name, email, passwordHash, role: "ADMIN", schoolId, dob: dob ? new Date(dob) : undefined },
   });
+  sendWelcomeEmail(admin.email, admin.name);
   res.status(201).json({
     id: admin.id,
     name: admin.name,
@@ -109,23 +114,27 @@ superAdminsRouter.get("/", async (_req, res) => {
 });
 
 const createSuperAdminSchema = z.object({
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
+  dob: z.string().datetime().optional(),
 });
 
 superAdminsRouter.post("/", async (req, res) => {
   const parsed = createSuperAdminSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { name, email, password } = parsed.data;
+  const { firstName, lastName, email, password, dob } = parsed.data;
+  const name = `${firstName} ${lastName}`.trim();
 
   const existingEmail = await prisma.user.findUnique({ where: { email } });
   if (existingEmail) return res.status(409).json({ error: "Email already registered" });
 
   const passwordHash = await bcrypt.hash(password, 10);
   const superAdmin = await prisma.user.create({
-    data: { name, email, passwordHash, role: "SUPER_ADMIN" },
+    data: { name, email, passwordHash, role: "SUPER_ADMIN", dob: dob ? new Date(dob) : undefined },
   });
+  sendWelcomeEmail(superAdmin.email, superAdmin.name);
   res.status(201).json({ id: superAdmin.id, name: superAdmin.name, email: superAdmin.email, isActive: superAdmin.isActive });
 });
 

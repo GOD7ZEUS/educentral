@@ -2,6 +2,7 @@ import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
+import { toIsoDob } from "../utils/dob";
 
 interface ClassRow {
   id: string;
@@ -44,7 +45,7 @@ function transportLabel(mode: string | null) {
 }
 
 const emptyForm = {
-  name: "", email: "", password: "", admissionNo: "", classId: "", sectionId: "",
+  firstName: "", lastName: "", email: "", password: "", admissionNo: "", classId: "", sectionId: "",
   dob: "", gender: "", bloodGroup: "", address: "",
   fatherName: "", fatherPhone: "", fatherOccupation: "", fatherQualification: "",
   motherName: "", motherPhone: "", motherOccupation: "", motherQualification: "",
@@ -121,7 +122,7 @@ export function Students() {
         ...form,
         classId: form.classId || undefined,
         sectionId: form.sectionId || undefined,
-        dob: form.dob ? new Date(form.dob).toISOString() : undefined,
+        dob: toIsoDob(form.dob),
         transportMode: form.transportMode || undefined,
       });
       setForm(emptyForm);
@@ -195,8 +196,11 @@ export function Students() {
         <form onSubmit={handleSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
           {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
 
-          <input required placeholder="Full name" value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input required placeholder="First name" value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <input required placeholder="Last name" value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input required type="email" placeholder="Email" value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -207,6 +211,12 @@ export function Students() {
           <input required placeholder="Admission No." value={form.admissionNo}
             onChange={(e) => setForm({ ...form, admissionNo: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            Date of birth
+            <input type="date" value={form.dob}
+              onChange={(e) => setForm({ ...form, dob: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
+          </label>
           <select value={form.classId}
             onChange={(e) => setForm({ ...form, classId: e.target.value, sectionId: "" })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm">
@@ -226,15 +236,11 @@ export function Students() {
             onClick={() => setShowFamilyDetails((v) => !v)}
             className="sm:col-span-2 text-left text-xs font-semibold uppercase tracking-wide text-indigo-600 hover:underline"
           >
-            {showFamilyDetails ? "Hide" : "Add"} date of birth, family &amp; transport details
+            {showFamilyDetails ? "Hide" : "Add"} family &amp; transport details
           </button>
 
           {showFamilyDetails && (
             <>
-              <label className="sm:col-span-2 -mb-2 text-xs text-slate-500">Date of birth</label>
-              <input type="date" value={form.dob}
-                onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
               <select value={form.gender}
                 onChange={(e) => setForm({ ...form, gender: e.target.value })}
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm">

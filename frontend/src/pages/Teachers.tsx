@@ -2,6 +2,7 @@ import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { PLATFORM_ROLES, useAuth } from "../context/AuthContext";
+import { toIsoDob } from "../utils/dob";
 
 interface SubjectRow {
   id: string;
@@ -17,7 +18,8 @@ interface TeacherRow {
   classesLed: { id: string; name: string; class: { name: string } }[];
 }
 
-const emptyForm = { name: "", email: "", password: "", employeeId: "", subjectIds: [] as string[] };
+const emptyForm = { firstName: "", lastName: "", email: "", password: "", employeeId: "", dob: "", subjectIds: [] as string[] };
+const emptyEditForm = { name: "", email: "", password: "", employeeId: "", subjectIds: [] as string[] };
 
 function teacherToEditForm(t: TeacherRow) {
   return { name: t.user.name, email: t.user.email, password: "", employeeId: t.employeeId, subjectIds: t.subjects.map((s) => s.id) };
@@ -33,7 +35,7 @@ export function Teachers() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState(emptyForm);
+  const [editForm, setEditForm] = useState(emptyEditForm);
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -47,21 +49,23 @@ export function Teachers() {
     api.get("/subjects").then((res) => setSubjects(res.data));
   }, []);
 
+  function toggleSubjectIds(ids: string[], id: string) {
+    return ids.includes(id) ? ids.filter((s) => s !== id) : [...ids, id];
+  }
+
   function toggleSubject(id: string, target: "create" | "edit") {
-    const setter = target === "create" ? setForm : setEditForm;
-    setter((prev) => ({
-      ...prev,
-      subjectIds: prev.subjectIds.includes(id)
-        ? prev.subjectIds.filter((s) => s !== id)
-        : [...prev.subjectIds, id],
-    }));
+    if (target === "create") {
+      setForm((prev) => ({ ...prev, subjectIds: toggleSubjectIds(prev.subjectIds, id) }));
+    } else {
+      setEditForm((prev) => ({ ...prev, subjectIds: toggleSubjectIds(prev.subjectIds, id) }));
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      await api.post("/teachers", form);
+      await api.post("/teachers", { ...form, dob: toIsoDob(form.dob) });
       setForm(emptyForm);
       setShowForm(false);
       loadTeachers();
@@ -121,12 +125,21 @@ export function Teachers() {
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
           {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
-          <input required placeholder="Full name" value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input required placeholder="First name" value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <input required placeholder="Last name" value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input required type="email" placeholder="Email" value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            Date of birth
+            <input type="date" value={form.dob}
+              onChange={(e) => setForm({ ...form, dob: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
+          </label>
           <input required type="password" placeholder="Password (min 8 chars)" value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />

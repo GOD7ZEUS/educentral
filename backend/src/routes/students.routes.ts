@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { ADMIN_OR_PLATFORM, requireAuth, requireRole, resolveSchoolId } from "../auth";
 import { isClassTeacherOfSection } from "../permissions";
+import { sendWelcomeEmail } from "../email";
 
 export const studentsRouter = Router();
 
@@ -57,7 +58,8 @@ const familyDetailsSchema = {
 };
 
 const createStudentSchema = z.object({
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
   admissionNo: z.string().min(1),
@@ -70,7 +72,8 @@ const createStudentSchema = z.object({
 studentsRouter.post("/", requireRole("TEACHER", ...ADMIN_OR_PLATFORM), async (req, res) => {
   const parsed = createStudentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { name, email, password, admissionNo, classId, sectionId, dob, ...details } = parsed.data;
+  const { firstName, lastName, email, password, admissionNo, classId, sectionId, dob, ...details } = parsed.data;
+  const name = `${firstName} ${lastName}`.trim();
 
   const schoolId = resolveSchoolId(req);
   if (!schoolId) return res.status(400).json({ error: "Select a school first" });
@@ -81,7 +84,7 @@ studentsRouter.post("/", requireRole("TEACHER", ...ADMIN_OR_PLATFORM), async (re
   const passwordHash = await bcrypt.hash(password, 10);
   const student = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { name, email, passwordHash, role: "STUDENT", schoolId },
+      data: { name, email, passwordHash, role: "STUDENT", schoolId, dob: dob ? new Date(dob) : undefined },
     });
     return tx.student.create({
       data: {
@@ -96,6 +99,7 @@ studentsRouter.post("/", requireRole("TEACHER", ...ADMIN_OR_PLATFORM), async (re
       include: { user: true, class: true, section: true },
     });
   });
+  sendWelcomeEmail(student.user.email, student.user.name);
   res.status(201).json(student);
 });
 

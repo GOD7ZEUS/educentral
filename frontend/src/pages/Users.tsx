@@ -2,6 +2,7 @@ import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { useAuth } from "../context/AuthContext";
+import { toIsoDob } from "../utils/dob";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -27,8 +28,8 @@ interface UserRow {
   school: { id: string; name: string } | null;
 }
 
-const emptyAdminForm = { schoolId: "", name: "", email: "", password: "" };
-const emptySuperAdminForm = { name: "", email: "", password: "" };
+const emptyAdminForm = { schoolId: "", firstName: "", lastName: "", email: "", password: "", dob: "" };
+const emptySuperAdminForm = { firstName: "", lastName: "", email: "", password: "", dob: "" };
 
 export function Users() {
   const { user } = useAuth();
@@ -65,7 +66,7 @@ export function Users() {
     e.preventDefault();
     setAdminError(null);
     try {
-      await api.post("/admins", adminForm);
+      await api.post("/admins", { ...adminForm, dob: toIsoDob(adminForm.dob) });
       setAdminForm(emptyAdminForm);
       setShowForm(false);
       loadUsers();
@@ -78,7 +79,7 @@ export function Users() {
     e.preventDefault();
     setSuperAdminError(null);
     try {
-      await api.post("/super-admins", superAdminForm);
+      await api.post("/super-admins", { ...superAdminForm, dob: toIsoDob(superAdminForm.dob) });
       setSuperAdminForm(emptySuperAdminForm);
       setShowForm(false);
       loadUsers();
@@ -168,12 +169,21 @@ export function Users() {
       {showForm && isMaster && (
         <form onSubmit={handleSuperAdminSubmit} className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
           {superAdminError && <p className="sm:col-span-2 text-sm text-red-600">{superAdminError}</p>}
-          <input required placeholder="Full name" value={superAdminForm.name}
-            onChange={(e) => setSuperAdminForm({ ...superAdminForm, name: e.target.value })}
+          <input required placeholder="First name" value={superAdminForm.firstName}
+            onChange={(e) => setSuperAdminForm({ ...superAdminForm, firstName: e.target.value })}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <input required placeholder="Last name" value={superAdminForm.lastName}
+            onChange={(e) => setSuperAdminForm({ ...superAdminForm, lastName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input required type="email" placeholder="Email" value={superAdminForm.email}
             onChange={(e) => setSuperAdminForm({ ...superAdminForm, email: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            Date of birth
+            <input type="date" value={superAdminForm.dob}
+              onChange={(e) => setSuperAdminForm({ ...superAdminForm, dob: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
+          </label>
           <input required type="password" placeholder="Password (min 8 chars)" value={superAdminForm.password}
             onChange={(e) => setSuperAdminForm({ ...superAdminForm, password: e.target.value })}
             className="sm:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm" />
@@ -192,12 +202,21 @@ export function Users() {
             <option value="">Select school</option>
             {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <input required placeholder="Full name" value={adminForm.name}
-            onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
+          <input required placeholder="First name" value={adminForm.firstName}
+            onChange={(e) => setAdminForm({ ...adminForm, firstName: e.target.value })}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <input required placeholder="Last name" value={adminForm.lastName}
+            onChange={(e) => setAdminForm({ ...adminForm, lastName: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input required type="email" placeholder="Email" value={adminForm.email}
             onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            Date of birth
+            <input type="date" value={adminForm.dob}
+              onChange={(e) => setAdminForm({ ...adminForm, dob: e.target.value })}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800" />
+          </label>
           <input required type="password" placeholder="Password (min 8 chars)" value={adminForm.password}
             onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
             className="sm:col-span-2 rounded-md border border-slate-300 px-3 py-2 text-sm" />

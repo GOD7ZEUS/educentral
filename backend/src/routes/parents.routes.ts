@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { ADMIN_OR_PLATFORM, requireAuth, requireRole, resolveSchoolId } from "../auth";
+import { sendWelcomeEmail } from "../email";
 
 export const parentsRouter = Router();
 
@@ -18,16 +19,19 @@ parentsRouter.get("/", async (req, res) => {
 });
 
 const createParentSchema = z.object({
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
+  dob: z.string().datetime().optional(),
   studentId: z.string().optional(),
 });
 
 parentsRouter.post("/", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => {
   const parsed = createParentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { name, email, password, studentId } = parsed.data;
+  const { firstName, lastName, email, password, dob, studentId } = parsed.data;
+  const name = `${firstName} ${lastName}`.trim();
 
   const schoolId = resolveSchoolId(req);
   if (!schoolId) return res.status(400).json({ error: "Select a school first" });
@@ -43,7 +47,7 @@ parentsRouter.post("/", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const parent = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { name, email, passwordHash, role: "PARENT", schoolId },
+      data: { name, email, passwordHash, role: "PARENT", schoolId, dob: dob ? new Date(dob) : undefined },
     });
     const created = await tx.parent.create({
       data: { userId: user.id, schoolId },
@@ -57,6 +61,7 @@ parentsRouter.post("/", requireRole(...ADMIN_OR_PLATFORM), async (req, res) => {
       include: { user: true, students: { include: { user: true } } },
     });
   });
+  sendWelcomeEmail(parent.user.email, parent.user.name);
   res.status(201).json(parent);
 });
 
