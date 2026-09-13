@@ -3,11 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-// These fields hold string values (not native Postgres enums), constrained
+// These fields hold string values (not native enums), constrained
 // by the Zod schemas in src/auth.ts and src/routes/*.
 // Role: SUPER_ADMIN | MASTER_ADMIN | ADMIN | TEACHER | STUDENT | PARENT
 // AttendanceStatus: PRESENT | ABSENT | LATE | EXCUSED
@@ -16,11 +16,15 @@ datasource db {
 
 // A tenant school on the platform. SUPER_ADMIN / MASTER_ADMIN accounts are not
 // scoped to a school (schoolId null on User); every other account belongs to one.
+//
+// MySQL note: Prisma's default String -> VARCHAR(191) is too short for the
+// base64-embedded logo (School.logoUrl) and other free-text fields, so those
+// are explicitly annotated @db.Text / @db.LongText below.
 model School {
   id         String   @id @default(cuid())
   name       String
   code       String   @unique
-  logoUrl    String?
+  logoUrl    String?  @db.LongText
   websiteUrl String?
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -116,7 +120,7 @@ model Student {
   dob           DateTime?
   gender        String?
   bloodGroup    String?
-  address       String?
+  address       String?  @db.Text
 
   fatherName        String?
   fatherPhone       String?
@@ -237,7 +241,7 @@ model Timetable {
 model Notice {
   id         String   @id @default(cuid())
   title      String
-  content    String
+  content    String   @db.Text
   audience   String?
   schoolId   String
   school     School   @relation(fields: [schoolId], references: [id])

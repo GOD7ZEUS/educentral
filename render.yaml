@@ -1,8 +1,7 @@
-databases:
-  - name: educentral-db
-    plan: free
-    databaseName: educentral
-    user: educentral
+# Render has no managed MySQL offering (only Postgres/Redis), so unlike the
+# earlier Postgres setup there's no `databases:` block here — DATABASE_URL
+# points at an external MySQL host you provide (Railway, Aiven, PlanetScale,
+# a self-hosted instance, etc.) via the sync: false env var below.
 
 services:
   - type: web
@@ -22,9 +21,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: educentral-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: MASTER_ADMIN_EMAIL
