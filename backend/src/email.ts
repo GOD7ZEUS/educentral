@@ -15,7 +15,14 @@ const transporter =
         requireTLS: true,
         auth: { user: gmailUser, pass: gmailAppPassword },
         connectionTimeout: 10_000,
-      })
+        // Render's network has no working IPv6 route, but smtp.gmail.com
+        // resolves to both A and AAAA records — without this, Node's
+        // default DNS ordering can pick the IPv6 address and fail with
+        // ENETUNREACH. Forcing IPv4 avoids that entirely. (Not in
+        // nodemailer's TS types, but it's passed straight through to
+        // net.connect, which does support it.)
+        family: 4,
+      } as any)
     : null;
 
 // Fire-and-forget: a failed welcome email should never block account
