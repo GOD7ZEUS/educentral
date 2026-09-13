@@ -4,11 +4,12 @@ import { requireAuth, requireRole } from "../auth";
 
 // A platform-wide directory of every account on the system. Visibility is
 // tiered: MASTER_ADMIN sees every role in every school (with a school filter);
-// SUPER_ADMIN sees only ADMIN and TEACHER accounts, and never MASTER_ADMIN.
+// SUPER_ADMIN sees other SUPER_ADMIN, ADMIN, TEACHER and STUDENT accounts,
+// but never MASTER_ADMIN.
 export const usersRouter = Router();
 
 const MASTER_VISIBLE_ROLES = ["SUPER_ADMIN", "MASTER_ADMIN", "ADMIN", "TEACHER", "STUDENT", "PARENT"];
-const SUPER_VISIBLE_ROLES = ["ADMIN", "TEACHER"];
+const SUPER_VISIBLE_ROLES = ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT"];
 
 usersRouter.use(requireAuth, requireRole("SUPER_ADMIN", "MASTER_ADMIN"));
 

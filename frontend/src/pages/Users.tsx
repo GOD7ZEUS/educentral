@@ -35,7 +35,7 @@ export function Users() {
   const isMaster = user?.role === "MASTER_ADMIN";
   const roleFilterOptions = isMaster
     ? ["ADMIN", "TEACHER", "STUDENT", "PARENT", "SUPER_ADMIN"]
-    : ["ADMIN", "TEACHER"];
+    : ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT"];
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
