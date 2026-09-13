@@ -1,8 +1,11 @@
-# Render has no managed MySQL offering (only Postgres/Redis), so unlike the
-# earlier Postgres setup there's no `databases:` block here — DATABASE_URL
-# points at an external MySQL host you provide (Railway, Aiven, PlanetScale,
-# a self-hosted instance, etc.) via the sync: false env var below.
-
+# Database is Turso (hosted libSQL/SQLite) — the app connects via a driver
+# adapter using TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (see backend/src/prisma.ts),
+# not Prisma's usual DATABASE_URL connection. Prisma's migrate/db push commands
+# don't support Turso's remote connection directly, so the schema is applied
+# once via the Turso CLI/console using backend/prisma/turso-init.sql — see
+# backend/prisma/README-turso.md for the one-time setup steps. DATABASE_URL
+# here is just a harmless local-file placeholder so `prisma generate` has an
+# env var to validate against at build time; it's never actually used.
 services:
   - type: web
     name: educentral
@@ -14,13 +17,16 @@ services:
       cd ../backend && npm install --include=dev && npx prisma generate && npm run build
     startCommand: >
       cd backend &&
-      npx prisma db push --skip-generate &&
       npx tsx prisma/seed.ts &&
       npm run start
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
+        value: "file:./unused-placeholder.db"
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
         sync: false
       - key: JWT_SECRET
         generateValue: true

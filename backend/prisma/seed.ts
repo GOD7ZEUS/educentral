@@ -1,7 +1,5 @@
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../src/prisma";
 
 // Production: seed nothing but the one Master Admin account, from env vars —
 // they then create Super Admins, who create school Admins, from the app itself.

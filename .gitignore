@@ -2,6 +2,8 @@ node_modules/
 dist/
 backend/dev.db
 backend/dev.db-journal
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
 backend/uploads/
 .env
 *.log

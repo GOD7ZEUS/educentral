@@ -1,9 +1,15 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
+// Locally this is a plain file (e.g. "file:./dev.db") so `prisma migrate`/`db
+// push`/Prisma Studio work normally. In production the app instead connects
+// through the libSQL driver adapter using TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
+// (see src/prisma.ts) — Prisma's migrate/push commands don't support Turso's
+// remote libsql:// connections directly, so DATABASE_URL here is dev-only.
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,15 +22,11 @@ datasource db {
 
 // A tenant school on the platform. SUPER_ADMIN / MASTER_ADMIN accounts are not
 // scoped to a school (schoolId null on User); every other account belongs to one.
-//
-// MySQL note: Prisma's default String -> VARCHAR(191) is too short for the
-// base64-embedded logo (School.logoUrl) and other free-text fields, so those
-// are explicitly annotated @db.Text / @db.LongText below.
 model School {
   id         String   @id @default(cuid())
   name       String
   code       String   @unique
-  logoUrl    String?  @db.LongText
+  logoUrl    String?
   websiteUrl String?
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -120,7 +122,7 @@ model Student {
   dob           DateTime?
   gender        String?
   bloodGroup    String?
-  address       String?  @db.Text
+  address       String?
 
   fatherName        String?
   fatherPhone       String?
@@ -241,7 +243,7 @@ model Timetable {
 model Notice {
   id         String   @id @default(cuid())
   title      String
-  content    String   @db.Text
+  content    String
   audience   String?
   schoolId   String
   school     School   @relation(fields: [schoolId], references: [id])
